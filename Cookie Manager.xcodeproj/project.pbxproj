@@ -10,6 +10,8 @@
 		825412EB1B5F9707000AC015 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 825412EA1B5F9707000AC015 /* AppDelegate.swift */; };
 		825412ED1B5F9707000AC015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 825412EC1B5F9707000AC015 /* Assets.xcassets */; };
 		825412F01B5F9708000AC015 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 825412EE1B5F9708000AC015 /* MainMenu.xib */; };
+		825412F91B5F9846000AC015 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 825412F71B5F9846000AC015 /* LICENSE */; };
+		825412FA1B5F9846000AC015 /* README.md in Sources */ = {isa = PBXBuildFile; fileRef = 825412F81B5F9846000AC015 /* README.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +20,8 @@
 		825412EC1B5F9707000AC015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		825412EF1B5F9708000AC015 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		825412F11B5F9708000AC015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		825412F71B5F9846000AC015 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		825412F81B5F9846000AC015 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -34,6 +38,8 @@
 		825412DE1B5F9707000AC015 = {
 			isa = PBXGroup;
 			children = (
+				825412F71B5F9846000AC015 /* LICENSE */,
+				825412F81B5F9846000AC015 /* README.md */,
 				825412E91B5F9707000AC015 /* Cookie Manager */,
 				825412E81B5F9707000AC015 /* Products */,
 			);
@@ -115,6 +121,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				825412F91B5F9846000AC015 /* LICENSE in Resources */,
 				825412ED1B5F9707000AC015 /* Assets.xcassets in Resources */,
 				825412F01B5F9708000AC015 /* MainMenu.xib in Resources */,
 			);
@@ -127,6 +134,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				825412FA1B5F9846000AC015 /* README.md in Sources */,
 				825412EB1B5F9707000AC015 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
