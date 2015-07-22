@@ -10,8 +10,10 @@
 		825412EB1B5F9707000AC015 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 825412EA1B5F9707000AC015 /* AppDelegate.swift */; };
 		825412ED1B5F9707000AC015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 825412EC1B5F9707000AC015 /* Assets.xcassets */; };
 		825412F01B5F9708000AC015 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 825412EE1B5F9708000AC015 /* MainMenu.xib */; };
-		825412F91B5F9846000AC015 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 825412F71B5F9846000AC015 /* LICENSE */; };
-		825412FA1B5F9846000AC015 /* README.md in Sources */ = {isa = PBXBuildFile; fileRef = 825412F81B5F9846000AC015 /* README.md */; };
+		825412FE1B5F9A98000AC015 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 825412FC1B5F9A98000AC015 /* MainViewController.swift */; };
+		825412FF1B5F9A98000AC015 /* MainViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 825412FD1B5F9A98000AC015 /* MainViewController.xib */; };
+		825413011B5F9BF7000AC015 /* CookieStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 825413001B5F9BF7000AC015 /* CookieStore.swift */; };
+		825413031B5FB0CC000AC015 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 825413021B5FB0CC000AC015 /* Extensions.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +24,10 @@
 		825412F11B5F9708000AC015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		825412F71B5F9846000AC015 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		825412F81B5F9846000AC015 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		825412FC1B5F9A98000AC015 /* MainViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		825412FD1B5F9A98000AC015 /* MainViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MainViewController.xib; sourceTree = "<group>"; };
+		825413001B5F9BF7000AC015 /* CookieStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CookieStore.swift; sourceTree = "<group>"; };
+		825413021B5FB0CC000AC015 /* Extensions.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,8 +63,12 @@
 			isa = PBXGroup;
 			children = (
 				825412EA1B5F9707000AC015 /* AppDelegate.swift */,
+				825413021B5FB0CC000AC015 /* Extensions.swift */,
 				825412EC1B5F9707000AC015 /* Assets.xcassets */,
 				825412EE1B5F9708000AC015 /* MainMenu.xib */,
+				825412FC1B5F9A98000AC015 /* MainViewController.swift */,
+				825412FD1B5F9A98000AC015 /* MainViewController.xib */,
+				825413001B5F9BF7000AC015 /* CookieStore.swift */,
 				825412F11B5F9708000AC015 /* Info.plist */,
 			);
 			path = "Cookie Manager";
@@ -121,8 +131,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				825412F91B5F9846000AC015 /* LICENSE in Resources */,
 				825412ED1B5F9707000AC015 /* Assets.xcassets in Resources */,
+				825412FF1B5F9A98000AC015 /* MainViewController.xib in Resources */,
 				825412F01B5F9708000AC015 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -134,8 +144,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				825412FA1B5F9846000AC015 /* README.md in Sources */,
 				825412EB1B5F9707000AC015 /* AppDelegate.swift in Sources */,
+				825412FE1B5F9A98000AC015 /* MainViewController.swift in Sources */,
+				825413011B5F9BF7000AC015 /* CookieStore.swift in Sources */,
+				825413031B5FB0CC000AC015 /* Extensions.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -32,19 +32,28 @@
 import Cocoa
 
 @NSApplicationMain
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate
+{
 
 	@IBOutlet weak var window: NSWindow!
+	
+	lazy var mainController: MainViewController = MainViewController(nibName: "MainViewController", bundle: nil)!
+	
 
-
-	func applicationDidFinishLaunching(aNotification: NSNotification) {
+	func applicationDidFinishLaunching(aNotification: NSNotification)
+	{
 		// Insert code here to initialize your application
+		window.contentView = mainController.view
 	}
 
-	func applicationWillTerminate(aNotification: NSNotification) {
+	func applicationWillTerminate(aNotification: NSNotification)
+	{
 		// Insert code here to tear down your application
 	}
 
-
+	func applicationShouldTerminateAfterLastWindowClosed(sender: NSApplication) -> Bool
+	{
+		return true
+	}
 }
 
