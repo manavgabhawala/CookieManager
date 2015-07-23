@@ -201,8 +201,8 @@ class CookieStore
 				location += cookieSizeRange.length // Move the pointer to the beginning of the cookie data.
 				
 				let cookieType = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
-				
-				location += cookieSizeRange.length // Some unknown field. TODO: Figure out what this is.
+
+				location += cookieSizeRange.length
 				
 				// Read the cookie's flags
 				let flagRange = NSRange(location: location, length: 4)
@@ -236,7 +236,7 @@ class CookieStore
 					assertionFailure("Cookie file format incorrect: no 4 padding bytes found.")
 					throw CookieError.FileParsingError
 				}
-				location += cookieSizeRange.length // Some unknown field. TODO: Figure out what this is.
+				location += cookieSizeRange.length
 				
 				var standardRange = NSRange(location: location, length: 4)
 				let URLOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie domain offset from cookie starting point
@@ -249,17 +249,27 @@ class CookieStore
 				standardRange.location += standardRange.length
 				location = standardRange.location
 				
-				let endOfCookieRange = NSRange(location: location, length: 8)
-				location += endOfCookieRange.length
-				let _ = Double(binary: page.subdataWithRange(endOfCookieRange), endian: .BigEndian)
-//				guard endOfCookie == 0.0
-//				else
-//				{
-//					assertionFailure("Cookie file format incorrect: no ending 8 bytes found for cookie.")
-//					throw CookieError.FileParsingError
-//				}
-				// TODO: Figure out what end of cookie contains.
-
+				let commentOffset = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
+				location += cookieSizeRange.length
+				let endBits = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
+				location += cookieSizeRange.length
+				
+				let comment: String?
+				if commentOffset != 0
+				{
+					comment = String(readData: page, fromLocationTillNullChar: offset + commentOffset)
+				}
+				else
+				{
+					comment = nil
+				}
+				guard endBits == 0
+				else
+				{
+					assertionFailure("Cookie file format incorrect: no 4 end bytes found.")
+					throw CookieError.FileParsingError
+				}
+				
 				var dateRange = NSRange(location: location, length: 8)
 				let expiryDate = NSDate(epochBinary: page.subdataWithRange(dateRange))
 				dateRange.location += dateRange.length
@@ -276,6 +286,7 @@ class CookieStore
 				print("Expiration: \(expiryDate)")
 				print("Creation: \(creationDate)")
 				print("Path: \(path)")
+				print("Comment: \(comment)")
 				print("Value: \(value)")
 				print("Secure: \(secure)")
 				print("HTTP Only: \(HTTPOnly)")
