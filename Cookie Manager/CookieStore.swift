@@ -8,40 +8,53 @@
 
 import Foundation
 
+/// The notification name for when Safari's cookies are changed.
 let safariCookiesChangedNotification = "SafariCookiesChangedNotification"
 
-
+///  These are the possible errors that the CookieStore can throw.
 enum CookieError : ErrorType
 {
+	/// A FilePermission error indicates that there was a problem accessing the file and either file doesn't exist or the user doesn't have enough privileges to access the cookie file.
 	case FilePermissionError
+	/// A FileParsing error indicates that there was an issue with reading the cookie file.
 	case FileParsingError
 }
 
+
+/// This class is responsible for parsing, accessing and writing cookies for `Safari`
 class CookieStore
 {
+	/// A jar of cookies created from the shared cookie store.
 	private let cookieJar = NSHTTPCookieStorage.sharedHTTPCookieStorage()
 	
+	private var cookieStore = [HTTPCookie]()
+	
+	/// An array of cookies from the cookie jar or an empty array if no cookies exist.
 	var cookies : [NSHTTPCookie]
 	{
 		return cookieJar.cookies ?? []
 	}
-	let cookiesURL: NSURL
-	let userLibraryURL: NSURL
 	
+	/// A URL to the cookies file setup inside the initializer.
+	private let cookiesURL: NSURL
+	
+	///  Initializes the Safari cookie store.
+	/// - Warning: This function takes a long time to run because the cookie store takes time to setup. Perform initialization on a background thread.
+	///  - returns: nil if something goes wrong like if the cookie's file cannot be accessed. Otherwise this returns an initialized `CookieStore`.
 	init?()
 	{
 		do
 		{
 			let fileManager = NSFileManager()
-			userLibraryURL = try fileManager.URLForDirectory(.LibraryDirectory, inDomain: NSSearchPathDomainMask.UserDomainMask, appropriateForURL: nil, create: false)
+			let userLibraryURL = try fileManager.URLForDirectory(.LibraryDirectory, inDomain: NSSearchPathDomainMask.UserDomainMask, appropriateForURL: nil, create: false)
 			cookiesURL = userLibraryURL.URLByAppendingPathComponent("Cookies").URLByAppendingPathComponent("Cookies.binarycookies")
 		}
 		catch
 		{
 			cookiesURL = NSURL(string: "")!
-			userLibraryURL = NSURL(string: "")!
 			return nil
 		}
+		
 		do
 		{
 			try updateCookies()
@@ -77,6 +90,7 @@ class CookieStore
 		return fd
 	}
 	
+	///  Begins monitoring changes to the cookies file. It blocks on a background thread until the file is updated. Once it is updated, it calls `updateCookies`
 	func startMonitoringCookieChanges()
 	{
 		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), {
@@ -109,10 +123,11 @@ class CookieStore
 	}
 	
 	///  Updates the cookie store to contain all the cookies.
-	///  Throws: `CookieError` with `FilePermissionError` if the fd could not be created. A `FileParsingError` if the file could not be parse properly.
-	
+	///  - Parameter fileDescriptor: An optional file descriptor that the `callee` can use to parse the cookies, only use this parameter if the `caller` knows for sure it has a valid file descriptor to the cookies file. If you call it without this parameter, it creates a file descriptor on its own.
+	///  - Throws: `CookieError` with `FilePermissionError` if the fd could not be created. A `FileParsingError` if the file could not be parse properly.
 	func updateCookies(fileDescriptor: Int32? = nil) throws
 	{
+		return
 		let file: NSFileHandle
 		if let fd = fileDescriptor
 		{
@@ -279,17 +294,9 @@ class CookieStore
 				let name = String(readData: page, fromLocationTillNullChar: offset + nameOffset) // Fetch cookie name from name offset
 				let path = String(readData: page, fromLocationTillNullChar: offset + pathOffset) // Fetch cookie path from path offset
 				let value = String(readData: page, fromLocationTillNullChar: offset + valueOffset) // Fetch cookie value from value offset
-
-				print("URL: \(URL)")
-				print("Cookie type: \(cookieType)")
-				print("Name: \(name)")
-				print("Expiration: \(expiryDate)")
-				print("Creation: \(creationDate)")
-				print("Path: \(path)")
-				print("Comment: \(comment)")
-				print("Value: \(value)")
-				print("Secure: \(secure)")
-				print("HTTP Only: \(HTTPOnly)")
+				
+				let cookie = HTTPCookie(URL: URL, name: name, value: value, path: path, expiryDate: expiryDate, creationDate: creationDate, secure: secure, HTTPOnly: HTTPOnly, version: cookieType, comment: comment)
+				cookieStore.append(cookie)
 			}
 		}
 	}
