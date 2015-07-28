@@ -8,31 +8,30 @@
 
 import Foundation
 
-/// The notification name for when Safari's cookies are changed.
-let safariCookiesChangedNotification = "SafariCookiesChangedNotification"
-
-///  These are the possible errors that the CookieStore can throw.
-enum CookieError : ErrorType
+protocol SafariCookieStoreDelegate: class
 {
-	/// A FilePermission error indicates that there was a problem accessing the file and either file doesn't exist or the user doesn't have enough privileges to access the cookie file.
-	case FilePermissionError
-	/// A FileParsing error indicates that there was an issue with reading the cookie file.
-	case FileParsingError
+	func didUpdateCookies()
+}
+extension SafariCookieStoreDelegate
+{
+	func didUpdateCookies() {}
 }
 
-
 /// This class is responsible for parsing, accessing and writing cookies for `Safari`
-class CookieStore
+class SafariCookieStore
 {
 	/// A jar of cookies created from the shared cookie store.
 	private let cookieJar = NSHTTPCookieStorage.sharedHTTPCookieStorage()
+	private var cookieJarCookies = [HTTPCookieDomain]()
 	
-	private var cookieStore = [HTTPCookie]()
+	private var cookieStore = [HTTPCookieDomain]()
 	
-	/// An array of cookies from the cookie jar or an empty array if no cookies exist.
-	var cookies : [NSHTTPCookie]
+	weak var delegate: SafariCookieStoreDelegate?
+	
+	/// An array of cookie domains from the cookie jar or the cookie store depending on what is available. This is the array  of all cookies wrapped into separate structs of type `HTTPCookieDomain`
+	var cookieDomains : [HTTPCookieDomain]
 	{
-		return cookieJar.cookies ?? []
+		return cookieJarCookies.count == 0 ? cookieStore : cookieJarCookies
 	}
 	
 	/// A URL to the cookies file setup inside the initializer.
@@ -52,17 +51,30 @@ class CookieStore
 		catch
 		{
 			cookiesURL = NSURL(string: "")!
-			return nil
+			if #available(OSX 10.11, *)
+			{
+				return nil
+			}
+		}
+		if #available(OSX 10.11, *)
+		{
+			
+			do
+			{
+				try updateCookies()
+			}
+			catch
+			{
+				return nil
+			}
+			startMonitoringCookieChanges()
+		}
+		else
+		{
+//			NSNotificationCenter.defaultCenter().addObserver(self, selector: "cookiesChanged:", name:  NSHTTPCookieManagerCookiesChangedNotification, object: cookieJar)
+			readCookiesFromJar()
 		}
 		
-		do
-		{
-			try updateCookies()
-		}
-		catch
-		{
-			return nil
-		}
 	}
 	
 	///  Creates a file descriptor to the cookies file.
@@ -102,9 +114,9 @@ class CookieStore
 			kEvent.fflags = UInt32(NOTE_WRITE | NOTE_DELETE)
 			kEvent.data = 0
 			kEvent.udata = nil
-			
 			while true
 			{
+				// FIXME: Fix file changes monitoring.
 				do
 				{
 					let fd = try self.createFileDescriptor() // we need a new fd every time so that we get the refreshed changes.
@@ -127,7 +139,7 @@ class CookieStore
 	///  - Throws: `CookieError` with `FilePermissionError` if the fd could not be created. A `FileParsingError` if the file could not be parse properly.
 	func updateCookies(fileDescriptor: Int32? = nil) throws
 	{
-		return
+		var cookieStore = [HTTPCookieDomain]()
 		let file: NSFileHandle
 		if let fd = fileDescriptor
 		{
@@ -140,6 +152,13 @@ class CookieStore
 		defer
 		{
 			file.closeFile()
+			delegate?.didUpdateCookies()
+		}
+		guard cookieDomains.count == 0
+		else
+		{
+			// We already have shared cookies from Safari return here.
+			return
 		}
 		
 		guard let header = String(data: file.readDataOfLength(4))
@@ -168,6 +187,7 @@ class CookieStore
 		// Get the actual page data using the sizes.
 		var pages = [NSData]()
 		pages.reserveCapacity(numberOfPages)
+		cookieStore.reserveCapacity(numberOfPages)
 		for size in pageSizes
 		{
 			pages.append(file.readDataOfLength(size))
@@ -207,7 +227,7 @@ class CookieStore
 				assertionFailure("Cookie file format incorrect: no ending 4 bytes found for page header end.")
 				throw CookieError.FileParsingError
 			}
-			
+			var currentDomain : HTTPCookieDomain?
 			for offset in cookieOffsets
 			{
 				location = offset
@@ -248,6 +268,7 @@ class CookieStore
 				guard padding == 0
 				else
 				{
+					// FIXME: Fail silently here. (Continue)
 					assertionFailure("Cookie file format incorrect: no 4 padding bytes found.")
 					throw CookieError.FileParsingError
 				}
@@ -295,9 +316,81 @@ class CookieStore
 				let path = String(readData: page, fromLocationTillNullChar: offset + pathOffset) // Fetch cookie path from path offset
 				let value = String(readData: page, fromLocationTillNullChar: offset + valueOffset) // Fetch cookie value from value offset
 				
+				// Create and add the cookie where required.
 				let cookie = HTTPCookie(URL: URL, name: name, value: value, path: path, expiryDate: expiryDate, creationDate: creationDate, secure: secure, HTTPOnly: HTTPOnly, version: cookieType, comment: comment)
-				cookieStore.append(cookie)
+				
+				if currentDomain == nil
+				{
+					currentDomain = HTTPCookieDomain(domain: URL, cookies: [cookie], capacity: numberOfCookies)
+				}
+				else
+				{
+					currentDomain!.addCookie(cookie)
+				}
+			}
+			guard let domain = currentDomain
+			else
+			{
+				continue
+			}
+			cookieStore.append(domain)
+		}
+		// Move everything over only once.
+		self.cookieStore = cookieStore
+	}
+	
+	///  Reciever for a cookies changed notification dispatched on versions of Mac OS X before El Capitan.
+	///
+	///  - parameter notification: The notification that the cookie jar was updated.
+	func cookiesChanged(notification: NSNotification)
+	{
+		readCookiesFromJar()
+		delegate?.didUpdateCookies()
+	}
+	
+	private func readCookiesFromJar()
+	{
+		var cookieJarCookies = [HTTPCookieDomain]()
+		let sortDescriptor = NSSortDescriptor(key: NSHTTPCookieDomain, ascending: true)
+		let jarCookies = cookieJar.sortedCookiesUsingDescriptors([sortDescriptor])
+		guard jarCookies.count > 0
+		else
+		{
+			do
+			{
+				try updateCookies()
+			}
+			catch
+			{
+				// TODO: Notify cannot monitor anymore.
+			}
+			return
+		}
+		var domain: HTTPCookieDomain?
+		for cookie in jarCookies
+		{
+			if domain == nil
+			{
+				domain = HTTPCookieDomain(domain: cookie.domain, cookies: [HTTPCookie(cookie: cookie)], capacity: 1)
+			}
+			else
+			{
+				if domain!.domain == cookie.domain
+				{
+					domain!.addCookie(HTTPCookie(cookie: cookie))
+				}
+				else
+				{
+					cookieJarCookies.append(domain!)
+					domain = HTTPCookieDomain(domain: cookie.domain, cookies: [HTTPCookie(cookie: cookie)], capacity: 1)
+				}
 			}
 		}
+		if let domain = domain
+		{
+			cookieJarCookies.append(domain) // Add the last domain that didn't get added.
+		}
+		// Move all at once.
+		self.cookieJarCookies = cookieJarCookies
 	}
 }

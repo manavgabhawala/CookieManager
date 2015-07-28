@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>C72605A2-C8B8-47CC-9B8E-72397F5F7BBD</string>
+	<key>IDESourceControlProjectName</key>
+	<string>project</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>B86C6B8831B03EF6157387B4EF7B34111878DC8E</key>
+		<string>https://github.com/manavgabhawala/CookieManager.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>Cookie Manager.xcodeproj/project.xcworkspace</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>B86C6B8831B03EF6157387B4EF7B34111878DC8E</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/manavgabhawala/CookieManager.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>B86C6B8831B03EF6157387B4EF7B34111878DC8E</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>B86C6B8831B03EF6157387B4EF7B34111878DC8E</string>
+			<key>IDESourceControlWCCName</key>
+			<string>Cookie%20Manager</string>
+		</dict>
+	</array>
+</dict>
+</plist>

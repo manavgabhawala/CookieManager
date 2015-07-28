@@ -99,6 +99,13 @@ extension Int
 
 extension Double
 {
+	///  Creates an Double from binary data using the endian to parse the binary data.
+	///
+	///  - Warning: This function will fail if the `length` of `data != 8`. Therefore data must be of length 8.
+	///  - parameter data:   The binary data to use to form the double.
+	///  - parameter endian: The endianness with which to read the data.
+	///
+	///  - returns: An initialized Double read from the binary data.
 	init(binary data: NSData, endian: Endianness)
 	{
 		assert(data.length == 8)
@@ -109,11 +116,12 @@ extension Double
 
 extension NSDate
 {
-	///  <#Description#>
+	///  A convenience initializer for NSDate that creates an NSDate using an epochBinary data of length 8. The underlying double in the binary data must be a date of the form of time interval in the Mac + iOS epoch format, i.e. the reference date is 1/1/2001. This method only supports `BigEndian` endianness.
 	///
-	///  - parameter data: <#data description#>
+	///  - Warning: This function will fail if the `length` of `data != 8`. Therefore data must be of length 8.
+	///  - parameter data: The epoch binary data to use to form the NSDate
 	///
-	///  - returns: <#return value description#>
+	///  - returns: An initialized NSDate created using the underlying Double value.
 	convenience init(epochBinary data: NSData)
 	{
 		let timeInterval = Double(binary: data, endian: .BigEndian)

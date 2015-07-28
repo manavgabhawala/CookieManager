@@ -9,7 +9,7 @@
 import Foundation
 
 /// A HTTPCookie instance represents a single http cookie. It is an object initialized from a NSHTTPCookie that contains the various cookie attributes or for newer versions using the exact values of the cookies from the binary file. It has accessors and setters to get the various attributes of a cookie. It also has an update method to update the cookie's details.
-class HTTPCookie
+struct HTTPCookie
 {
 	/// Returns the domain of the receiver. This value specifies URL domain to which the cookie should be sent. A domain with a leading dot means the cookie should be sent to subdomains as well, assuming certain other restrictions are valid. See RFC 2965 for more detail.
 	var domain : String
@@ -109,4 +109,22 @@ class HTTPCookie
 		}
 	}
 	
+	// TODO: Add functionality for modifying and deleting cookies.
 }
+extension HTTPCookie: Equatable
+{
+}
+func ==(lhs: HTTPCookie, rhs: HTTPCookie) -> Bool
+{
+	// Enough properties that if these are all equal the cookie is probably equal.
+	return  lhs.domain == rhs.domain && lhs.name == rhs.name && lhs.value == rhs.value && lhs.version == rhs.version && lhs.secure == rhs.secure
+}
+class HTTPCookieWrapper
+{
+	let cookie: HTTPCookie
+	init(cookie: HTTPCookie)
+	{
+		self.cookie = cookie
+	}
+}
+
