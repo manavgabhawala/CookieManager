@@ -5,6 +5,27 @@
 //  Created by Manav Gabhawala on 23/07/15.
 //  Copyright © 2015 Manav Gabhawala. All rights reserved.
 //
+// The MIT License (MIT)
+
+// Copyright (c) 2015 Manav Gabhawala
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 import Foundation
 
@@ -26,6 +47,12 @@ struct HTTPCookie
 	
 	/// Returns the version of the receiver. Version 0 maps to "old-style" Netscape cookies. Version 1 maps to RFC2965 cookies. There may be future versions.
 	var version: Int
+	
+	/// A computed property which converts the version to a user readable string.
+	var versionDescription: String
+	{
+		return version == 0 ? "Netscape" : version == 1 ? "RFC2965" : "Unknown"
+	}
 	
 	/// Returns the expires date of the receiver. The expires date is the date when the cookie should be deleted. The result will be nil if there is no specific expires date. This will be the case only for "session-only" cookies.
 	var expiryDate : NSDate?
@@ -91,7 +118,6 @@ struct HTTPCookie
 	
 	///  Intializes the cookie based on the values found from the binary. See the properties of this class for more information about the parameters.
 	///
-	///
 	///  - returns: An initialized HTTPCookie
 	init(URL: String, name: String, value: String, path: String, expiryDate: NSDate, creationDate: NSDate, secure: Bool, HTTPOnly: Bool, version: Int, comment: String?)
 	{
@@ -107,6 +133,11 @@ struct HTTPCookie
 		{
 			self.comment = comment
 		}
+	}
+	
+	func shouldBeIncludedForSearchString(string: String) -> Bool
+	{
+		return true
 	}
 	
 	// TODO: Add functionality for modifying and deleting cookies.

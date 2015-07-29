@@ -5,13 +5,40 @@
 //  Created by Manav Gabhawala on 22/07/15.
 //  Copyright © 2015 Manav Gabhawala. All rights reserved.
 //
+// The MIT License (MIT)
+
+// Copyright (c) 2015 Manav Gabhawala
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 import Foundation
 
 protocol SafariCookieStoreDelegate: class
 {
 	func didUpdateCookies()
+	func numberOfDomainsFound(domainCount: Int)
+	func numberOfCookiesFound(cookiesCount: Int)
+	func amountParsed(amount: Double)
+	func startedParsingCookies()
+	func finishedParsingCookies()
 }
+
 extension SafariCookieStoreDelegate
 {
 	func didUpdateCookies() {}
@@ -40,8 +67,9 @@ class SafariCookieStore
 	///  Initializes the Safari cookie store.
 	/// - Warning: This function takes a long time to run because the cookie store takes time to setup. Perform initialization on a background thread.
 	///  - returns: nil if something goes wrong like if the cookie's file cannot be accessed. Otherwise this returns an initialized `CookieStore`.
-	init?()
+	init?(delegate: SafariCookieStoreDelegate? = nil)
 	{
+		self.delegate = delegate
 		do
 		{
 			let fileManager = NSFileManager()
@@ -71,7 +99,7 @@ class SafariCookieStore
 		}
 		else
 		{
-//			NSNotificationCenter.defaultCenter().addObserver(self, selector: "cookiesChanged:", name:  NSHTTPCookieManagerCookiesChangedNotification, object: cookieJar)
+			NSNotificationCenter.defaultCenter().addObserver(self, selector: "cookiesChanged:", name:  NSHTTPCookieManagerCookiesChangedNotification, object: cookieJar)
 			readCookiesFromJar()
 		}
 		
@@ -139,6 +167,7 @@ class SafariCookieStore
 	///  - Throws: `CookieError` with `FilePermissionError` if the fd could not be created. A `FileParsingError` if the file could not be parse properly.
 	func updateCookies(fileDescriptor: Int32? = nil) throws
 	{
+		delegate?.startedParsingCookies()
 		var cookieStore = [HTTPCookieDomain]()
 		let file: NSFileHandle
 		if let fd = fileDescriptor
@@ -154,28 +183,21 @@ class SafariCookieStore
 			file.closeFile()
 			delegate?.didUpdateCookies()
 		}
-		guard cookieDomains.count == 0
+		guard cookieJar.cookies == nil || cookieJar.cookies?.count == 0
 		else
 		{
 			// We already have shared cookies from Safari return here.
 			return
 		}
 		
-		guard let header = String(data: file.readDataOfLength(4))
+		guard let header = String(data: file.readDataOfLength(4)) where header == "cook" // Short for cookies? Who knows? Special string
 		else
 		{
-			throw CookieError.FileParsingError
-		}
-		
-		guard header == "cook" // Short for cookies? Who knows? Special string
-		else
-		{
-			assertionFailure("Cookie file format incorrect: no cook header found.")
 			throw CookieError.FileParsingError
 		}
 		
 		let numberOfPages = Int(binary: file.readDataOfLength(4), endian: .LittleEndian) // Number of pages in binary file
-		
+		delegate?.numberOfDomainsFound(numberOfPages)
 		// Get the page sizes
 		var pageSizes = [Int]()
 		pageSizes.reserveCapacity(numberOfPages)
@@ -192,154 +214,162 @@ class SafariCookieStore
 		{
 			pages.append(file.readDataOfLength(size))
 		}
-		for page in pages
-		{
-			var location = 0
-			let pageHeaderRange = NSRange(location: location, length: 4) // Page header is always the first 4 bytes.
-			location += pageHeaderRange.length
-			let pageHeader = Int(binary: page.subdataWithRange(pageHeaderRange), endian: .LittleEndian)
-			guard pageHeader == 256
-			else
+		var totalNumberOfCookies = 0
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
+			for (i, page) in pages.enumerate()
 			{
-				assertionFailure("Cookie file format incorrect: no beginning 4 bytes found for page header.")
-				throw CookieError.FileParsingError
-			}
-			
-			let numCookiesRange = NSRange(location: location, length: 4)
-			location += numCookiesRange.length
-
-			let numberOfCookies = Int(binary: page.subdataWithRange(numCookiesRange), endian: .BigEndian) // Number of cookies in each page, its always the first 4 bytes after the page header
-			// Cookie offsets.
-			var cookieOffsets = [Int]()
-			cookieOffsets.reserveCapacity(numberOfCookies)
-			for _ in 0..<numberOfCookies
-			{
-				let cookieRange = NSRange(location: location, length: 4)
-				location += cookieRange.length
-				cookieOffsets.append(Int(binary: page.subdataWithRange(cookieRange), endian: .BigEndian))
-			}
-			
-			let pageHeaderEndRange = NSRange(location: location, length: 4)
-			let pageHeaderEnd = Int(binary: page.subdataWithRange(pageHeaderEndRange), endian: .BigEndian)
-			guard pageHeaderEnd == 0 // end of page header.
-			else
-			{
-				assertionFailure("Cookie file format incorrect: no ending 4 bytes found for page header end.")
-				throw CookieError.FileParsingError
-			}
-			var currentDomain : HTTPCookieDomain?
-			for offset in cookieOffsets
-			{
-				location = offset
-				let cookieSizeRange = NSRange(location: location, length: 4)
-				_ = Int(binary: page.subdataWithRange(cookieSizeRange), endian: .BigEndian) // Read the cookie size.
-				location += cookieSizeRange.length // Move the pointer to the beginning of the cookie data.
-				
-				let cookieType = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
-
-				location += cookieSizeRange.length
-				
-				// Read the cookie's flags
-				let flagRange = NSRange(location: location, length: 4)
-				let flag = Int(binary: page.subdataWithRange(flagRange), endian: .BigEndian)
-				location += flagRange.length
-				// Cookie flags:  1=secure, 4=httponly, 5=secure+httponly
-				var secure = false
-				var HTTPOnly = false
-				
-				switch flag
-				{
-				case 0:
-					break
-				case 1:
-					secure = true
-					break
-				case 4:
-					HTTPOnly = true
-					break
-				case 5:
-					secure = true
-					HTTPOnly = true
-					break
-				default:
-					print("Unknown cookie flag \(flag) found.")
-				}
-				let padding = Int(binary: page.subdataWithRange(NSRange(location: location, length: 4)), endian: .BigEndian)
-				guard padding == 0
+				self.delegate?.amountParsed(Double(i) / Double(numberOfPages))
+				var location = 0
+				let pageHeaderRange = NSRange(location: location, length: 4) // Page header is always the first 4 bytes.
+				location += pageHeaderRange.length
+				let pageHeader = Int(binary: page.subdataWithRange(pageHeaderRange), endian: .LittleEndian)
+				guard pageHeader == 256
 				else
 				{
-					// FIXME: Fail silently here. (Continue)
-					assertionFailure("Cookie file format incorrect: no 4 padding bytes found.")
-					throw CookieError.FileParsingError
+					continue
 				}
-				location += cookieSizeRange.length
 				
-				var standardRange = NSRange(location: location, length: 4)
-				let URLOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie domain offset from cookie starting point
-				standardRange.location += standardRange.length
-				let nameOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie name offset from cookie starting point
-				standardRange.location += standardRange.length
-				let pathOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie path offset from cookie starting point
-				standardRange.location += standardRange.length
-				let valueOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie value offset from cookie starting point
-				standardRange.location += standardRange.length
-				location = standardRange.location
+				let numCookiesRange = NSRange(location: location, length: 4)
+				location += numCookiesRange.length
 				
-				let commentOffset = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
-				location += cookieSizeRange.length
-				let endBits = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
-				location += cookieSizeRange.length
-				
-				let comment: String?
-				if commentOffset != 0
+				let numberOfCookies = Int(binary: page.subdataWithRange(numCookiesRange), endian: .BigEndian) // Number of cookies in each page, its always the first 4 bytes after the page header
+				totalNumberOfCookies += numberOfCookies
+				self.delegate?.numberOfCookiesFound(totalNumberOfCookies)
+				// Cookie offsets.
+				var cookieOffsets = [Int]()
+				cookieOffsets.reserveCapacity(numberOfCookies)
+				for _ in 0..<numberOfCookies
 				{
-					comment = String(readData: page, fromLocationTillNullChar: offset + commentOffset)
+					let cookieRange = NSRange(location: location, length: 4)
+					location += cookieRange.length
+					cookieOffsets.append(Int(binary: page.subdataWithRange(cookieRange), endian: .BigEndian))
 				}
+				
+				let pageHeaderEndRange = NSRange(location: location, length: 4)
+				let pageHeaderEnd = Int(binary: page.subdataWithRange(pageHeaderEndRange), endian: .BigEndian)
+				guard pageHeaderEnd == 0 // end of page header.
 				else
 				{
-					comment = nil
+					continue
 				}
-				guard endBits == 0
-				else
+				var currentDomain : HTTPCookieDomain?
+				for offset in cookieOffsets
 				{
-					assertionFailure("Cookie file format incorrect: no 4 end bytes found.")
-					throw CookieError.FileParsingError
+					location = offset
+					let cookieSizeRange = NSRange(location: location, length: 4)
+					_ = Int(binary: page.subdataWithRange(cookieSizeRange), endian: .BigEndian) // Read the cookie size.
+					location += cookieSizeRange.length // Move the pointer to the beginning of the cookie data.
+					
+					let cookieType = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
+					
+					location += cookieSizeRange.length
+					
+					// Read the cookie's flags
+					let flagRange = NSRange(location: location, length: 4)
+					let flag = Int(binary: page.subdataWithRange(flagRange), endian: .BigEndian)
+					location += flagRange.length
+					// Cookie flags:  1=secure, 4=httponly, 5=secure+httponly
+					var secure = false
+					var HTTPOnly = false
+					
+					switch flag
+					{
+					case 0:
+						break
+					case 1:
+						secure = true
+						break
+					case 4:
+						HTTPOnly = true
+						break
+					case 5:
+						secure = true
+						HTTPOnly = true
+						break
+					default:
+						print("Unknown cookie flag \(flag) found.")
+					}
+					let padding = Int(binary: page.subdataWithRange(NSRange(location: location, length: 4)), endian: .BigEndian)
+					guard padding == 0
+					else
+					{
+						continue
+					}
+					location += cookieSizeRange.length
+					
+					var standardRange = NSRange(location: location, length: 4)
+					let URLOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie domain offset from cookie starting point
+					standardRange.location += standardRange.length
+					let nameOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie name offset from cookie starting point
+					standardRange.location += standardRange.length
+					let pathOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie path offset from cookie starting point
+					standardRange.location += standardRange.length
+					let valueOffset = Int(binary: page.subdataWithRange(standardRange), endian: .BigEndian) // Cookie value offset from cookie starting point
+					standardRange.location += standardRange.length
+					location = standardRange.location
+					
+					let commentOffset = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
+					location += cookieSizeRange.length
+					let endBits = Int(binary: page.subdataWithRange(NSRange(location: location, length: cookieSizeRange.length)), endian: .BigEndian)
+					location += cookieSizeRange.length
+					
+					let comment: String?
+					if commentOffset != 0
+					{
+						comment = String(readData: page, fromLocationTillNullChar: offset + commentOffset)
+					}
+					else
+					{
+						comment = nil
+					}
+					guard endBits == 0
+					else
+					{
+						continue
+					}
+					
+					var dateRange = NSRange(location: location, length: 8)
+					let expiryDate = NSDate(epochBinary: page.subdataWithRange(dateRange))
+					dateRange.location += dateRange.length
+					let creationDate = NSDate(epochBinary: page.subdataWithRange(dateRange))
+					
+					let URL =  String(readData: page, fromLocationTillNullChar: offset + URLOffset) // Fetch domain value from url offset
+					let name = String(readData: page, fromLocationTillNullChar: offset + nameOffset) // Fetch cookie name from name offset
+					let path = String(readData: page, fromLocationTillNullChar: offset + pathOffset) // Fetch cookie path from path offset
+					let value = String(readData: page, fromLocationTillNullChar: offset + valueOffset) // Fetch cookie value from value offset
+					
+					// Create and add the cookie where required.
+					let cookie = HTTPCookie(URL: URL, name: name, value: value, path: path, expiryDate: expiryDate, creationDate: creationDate, secure: secure, HTTPOnly: HTTPOnly, version: cookieType, comment: comment)
+					
+					if currentDomain == nil
+					{
+						currentDomain = HTTPCookieDomain(domain: URL, cookies: [cookie], capacity: numberOfCookies)
+					}
+					else
+					{
+						currentDomain!.addCookie(cookie)
+					}
 				}
-				
-				var dateRange = NSRange(location: location, length: 8)
-				let expiryDate = NSDate(epochBinary: page.subdataWithRange(dateRange))
-				dateRange.location += dateRange.length
-				let creationDate = NSDate(epochBinary: page.subdataWithRange(dateRange))
-				
-				let URL =  String(readData: page, fromLocationTillNullChar: offset + URLOffset) // Fetch domain value from url offset
-				let name = String(readData: page, fromLocationTillNullChar: offset + nameOffset) // Fetch cookie name from name offset
-				let path = String(readData: page, fromLocationTillNullChar: offset + pathOffset) // Fetch cookie path from path offset
-				let value = String(readData: page, fromLocationTillNullChar: offset + valueOffset) // Fetch cookie value from value offset
-				
-				// Create and add the cookie where required.
-				let cookie = HTTPCookie(URL: URL, name: name, value: value, path: path, expiryDate: expiryDate, creationDate: creationDate, secure: secure, HTTPOnly: HTTPOnly, version: cookieType, comment: comment)
-				
-				if currentDomain == nil
+				guard let domain = currentDomain
+					else
 				{
-					currentDomain = HTTPCookieDomain(domain: URL, cookies: [cookie], capacity: numberOfCookies)
+					continue
 				}
-				else
+				cookieStore.append(domain)
+				if (self.cookieStore.count + 10 < cookieStore.count) // Update the store for every 10 cookies read for efficency.
 				{
-					currentDomain!.addCookie(cookie)
+					self.cookieStore = cookieStore
+					self.delegate?.didUpdateCookies()
 				}
 			}
-			guard let domain = currentDomain
-			else
-			{
-				continue
-			}
-			cookieStore.append(domain)
-		}
-		// Move everything over only once.
-		self.cookieStore = cookieStore
+			// Move everything over only once.
+			self.cookieStore = cookieStore.sort { $0.domain < $1.domain }
+			self.delegate?.didUpdateCookies()
+			self.delegate?.finishedParsingCookies()
+		})
 	}
 	
-	///  Reciever for a cookies changed notification dispatched on versions of Mac OS X before El Capitan.
+	/// Reciever for a cookies changed notification dispatched on versions of Mac OS X before El Capitan.
 	///
 	///  - parameter notification: The notification that the cookie jar was updated.
 	func cookiesChanged(notification: NSNotification)
@@ -366,12 +396,16 @@ class SafariCookieStore
 			}
 			return
 		}
+		delegate?.startedParsingCookies()
+		delegate?.numberOfCookiesFound(jarCookies.count)
 		var domain: HTTPCookieDomain?
-		for cookie in jarCookies
+		for (i, cookie) in jarCookies.enumerate()
 		{
+			delegate?.amountParsed(Double(i) / Double(jarCookies.count))
 			if domain == nil
 			{
 				domain = HTTPCookieDomain(domain: cookie.domain, cookies: [HTTPCookie(cookie: cookie)], capacity: 1)
+				delegate?.numberOfDomainsFound(cookieJarCookies.count)
 			}
 			else
 			{
@@ -390,7 +424,9 @@ class SafariCookieStore
 		{
 			cookieJarCookies.append(domain) // Add the last domain that didn't get added.
 		}
+		
 		// Move all at once.
 		self.cookieJarCookies = cookieJarCookies
+		delegate?.finishedParsingCookies()
 	}
 }
