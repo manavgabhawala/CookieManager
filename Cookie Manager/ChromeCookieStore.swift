@@ -86,7 +86,7 @@ final class ChromeCookieStore : GenericCookieStore
 	override func updateCookies(fd: Int32? = nil) throws
 	{
 		delegate?.startedParsingCookies()
-		
+		defer { delegate?.finishedParsingCookies() }
 		guard let count = db.intForQuery("SELECT COUNT(*) FROM cookies"), let cookies = db.executeQuery("SELECT * FROM cookies ORDER BY host_key")
 		else
 		{
@@ -140,7 +140,9 @@ final class ChromeCookieStore : GenericCookieStore
 		{
 			delegate?.browser(.Chrome, lostDomain: domain)
 		}
-		delegate?.finishedParsingCookies()
 	}
-	
+	override func stoppedTrackingCookies()
+	{
+		delegate?.stoppedTrackingChromeCookies()
+	}
 }

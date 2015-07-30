@@ -308,6 +308,7 @@ final class SafariCookieStore: GenericCookieStore
 		readCookiesFromJar()
 	}
 	
+	///  Reads cookies from the jar for versions of Mac OS X before El Capitan
 	private func readCookiesFromJar()
 	{
 		let sortDescriptor = NSSortDescriptor(key: NSHTTPCookieDomain, ascending: true)
@@ -322,7 +323,7 @@ final class SafariCookieStore: GenericCookieStore
 			}
 			catch
 			{
-				delegate?.stoppedTrackingSafariCookies()
+				stoppedTrackingCookies()
 			}
 			return
 		}
@@ -355,5 +356,10 @@ final class SafariCookieStore: GenericCookieStore
 			delegate?.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Safari) // Add the last domain that didn't get added.
 		}
 		delegate?.finishedParsingCookies()
+	}
+	
+	override func stoppedTrackingCookies()
+	{
+		delegate?.stoppedTrackingSafariCookies()
 	}
 }
