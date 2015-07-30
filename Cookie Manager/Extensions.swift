@@ -159,3 +159,18 @@ extension NSDate
 		self.init(timeIntervalSinceReferenceDate: timeInterval)
 	}
 }
+
+extension Array where Element : Equatable
+{
+	mutating func removeElement(element: Element)
+	{
+		for (i, elem) in enumerate()
+		{
+			if elem == element
+			{
+				self.removeAtIndex(i)
+				return
+			}
+		}
+	}
+}

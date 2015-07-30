@@ -36,7 +36,8 @@ class MainViewController: NSViewController
 	
 	@IBOutlet var splitView: NSView!
 	
-	var store : SafariCookieStore!
+	var store : CookieStore!
+	
 	var selectedCookies = [HTTPCookie]()
 	
 	var searchDomains : [HTTPCookieDomain]?
@@ -44,10 +45,7 @@ class MainViewController: NSViewController
 	@IBOutlet var toolbar: NSToolbar!
 	
 	@IBOutlet var cookieDomainsStatus: NSTextField!
-	var totalDomainsCount = 0
-	
 	@IBOutlet var cookiesStatus: NSTextField!
-	var totalCookiesCount = 0
 	
 	@IBOutlet var cookiesProgress: NSProgressIndicator!
 	
@@ -55,19 +53,15 @@ class MainViewController: NSViewController
 	{
         super.viewDidLoad()
         // Do view setup here.
+		store = CookieStore(delegate: self)
+		
 		tableView.setDataSource(self)
 		tableView.setDelegate(self)
 		sourceList.setDataSource(self)
 		sourceList.setDelegate(self)
 		
-		// TODO: Check for preferences and null of that manager here.
-		
 		cookiesProgress.doubleValue = 0.0
 		
-		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
-			self.store = SafariCookieStore(delegate: self)
-			self.didUpdateCookies()
-		})
     }
 	override func viewDidAppear()
 	{
@@ -76,17 +70,17 @@ class MainViewController: NSViewController
 	}
 }
 // MARK: - Safari Cookie reader
-extension MainViewController : SafariCookieStoreDelegate
+extension MainViewController : CookieStoreDelegate
 {
 	func updateLabels()
 	{
 		dispatch_async(dispatch_get_main_queue(), {
 			let cookieDomainCount = self.sourceList.selectedRowIndexes.count
 			let domainWord = cookieDomainCount == 1 ? "domain" : "domains"
-			self.cookieDomainsStatus.stringValue = "\(cookieDomainCount) cookie \(domainWord) out of \(self.totalDomainsCount)"
+			self.cookieDomainsStatus.stringValue = "\(cookieDomainCount) cookie \(domainWord) out of \(self.store.domainCount)"
 			let cookieCount = self.selectedCookies.count
 			let cookieWord = cookieCount == 1 ? "cookie" : "cookies"
-			self.cookiesStatus.stringValue = "Displaying \(cookieCount) \(cookieWord) out of \(self.totalCookiesCount)"
+			self.cookiesStatus.stringValue = "Displaying \(cookieCount) \(cookieWord) out of \(self.store.cookieCount)"
 		})
 	}
 	
@@ -100,34 +94,32 @@ extension MainViewController : SafariCookieStoreDelegate
 	func finishedParsingCookies()
 	{
 		dispatch_async(dispatch_get_main_queue(), {
+			self.updateLabels()
 			self.cookiesProgress.alphaValue = 0.0
-		})
-	}
-	func amountParsed(amount: Double)
-	{
-		dispatch_async(dispatch_get_main_queue(), {
-			self.cookiesProgress.doubleValue = amount * self.cookiesProgress.maxValue
+			self.sourceList.reloadData()
 		})
 	}
 	
-	func didUpdateCookies()
+	func stoppedTrackingCookiesForBrowser(browser: Browser)
+	{
+		// TODO: Show error.
+	}
+	
+	func madeProgress(progress: Double)
 	{
 		dispatch_async(dispatch_get_main_queue(), {
-			self.sourceList.reloadData()
-			self.tableView.reloadData()
+			self.cookiesProgress.doubleValue = progress * self.cookiesProgress.maxValue
 		})
-		
 	}
-	func numberOfDomainsFound(domainCount: Int)
+	func updatedCookies()
 	{
-		totalDomainsCount = domainCount
-		updateLabels()
+		dispatch_async(dispatch_get_main_queue(), {
+			self.updateLabels()
+			self.sourceList.reloadData()
+		})
+
 	}
-	func numberOfCookiesFound(cookiesCount: Int)
-	{
-		totalCookiesCount = cookiesCount
-		updateLabels()
-	}
+	
 }
 // MARK: - Table View
 extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
@@ -137,7 +129,7 @@ extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
 		guard tableView !== sourceList
 		else
 		{
-			return searchDomains?.count ?? store?.cookieDomains.count ?? 0
+			return store.domainCount
 		}
 		return selectedCookies.count
 	}
@@ -146,10 +138,10 @@ extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
 		guard tableView !== sourceList
 		else
 		{
-			guard row < (searchDomains?.count ?? store.cookieDomains.count)
+			guard row < (searchDomains?.count ?? store.domainCount)
 			else { return nil }
 			let cell = tableView.makeViewWithIdentifier("cell", owner: self) as? NSTableCellView
-			cell?.textField?.stringValue = searchDomains?[row].domain ?? store.cookieDomains[row].domain
+			cell?.textField?.stringValue = searchDomains?[row].domain ?? store.domainAtIndex(row)?.domain ?? ""
 			return cell
 		}
 		guard let id = tableColumn?.identifier
@@ -164,6 +156,9 @@ extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
 		
 		switch id
 		{
+		case "browser":
+			view?.imageView?.image = cookie.browser.image
+			break
 		case "domain":
 			view?.textField?.stringValue = cookie.domain
 			break
@@ -206,13 +201,13 @@ extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
 		selectedCookies.removeAll(keepCapacity: true)
 		for index in sourceList.selectedRowIndexes
 		{
-			guard index >= 0 && index < (searchDomains?.count ?? store?.cookieDomains.count ?? 0)
+			guard index >= 0 && index < (searchDomains?.count ?? store.domainCount)
 			else
 			{
 				continue
 			}
-			let domain = (searchDomains?[index] ?? store!.cookieDomains[index])
-			domain.cookies.map { selectedCookies.append($0) }
+			let domain = (searchDomains?[index] ?? store.domainAtIndex(index))
+			domain?.cookies.map { selectedCookies.append($0) }
 		}
 		tableView.reloadData()
 		updateLabels()
@@ -230,6 +225,9 @@ extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
 			}
 			switch key
 			{
+			case "browser":
+				selectedCookies.sortInPlace { $0.browser.compare($1.browser) == order }
+				break
 			case "domain":
 				selectedCookies.sortInPlace { $0.domain.localizedCaseInsensitiveCompare($1.domain) == order }
 				break
@@ -299,34 +297,7 @@ extension MainViewController : NSToolbarDelegate
 			searchDomains = nil
 			return
 		}
-		let searchStrings = str.componentsSeparatedByString(" ")
-		
-		searchDomains = store?.cookieDomains.filter
-		{
-			for search in searchStrings
-			{
-				if $0.domain.caseInsensitiveContainsString(search)
-				{
-					return true
-				}
-				for cookie in $0.cookies
-				{
-					if cookie.name.caseInsensitiveContainsString(search)
-					{
-						return true
-					}
-					if cookie.value.caseInsensitiveContainsString(search)
-					{
-						return true
-					}
-					if cookie.secure && search == "secure"
-					{
-						return true
-					}
-				}
-			}
-			return false
-		}
+		searchDomains = store.searchUsingString(str)
 	}
 }
 

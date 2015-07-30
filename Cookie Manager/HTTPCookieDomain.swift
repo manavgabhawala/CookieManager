@@ -29,14 +29,15 @@
 
 import Foundation
 
-///  An HTTPCookieDomain instance stores all the cookies for a particular domain. It also encapsulates other shared data between all the cookies in that particular domain.
-struct HTTPCookieDomain
+/// An HTTPCookieDomain instance stores all the cookies for a particular domain. It also encapsulates other shared data between all the cookies in that particular domain.
+class HTTPCookieDomain
 {
 	private(set) var cookies : [HTTPCookie]
 	
 	/// Returns the domain of the receiver. This value specifies URL domain to which the cookie should be sent. A domain with a leading dot means the cookie should be sent to subdomains as well, assuming certain other restrictions are valid. See RFC 2965 for more detail.
 	var domain : String
 	var type: Int?
+	
 	///  Initializes the `HTTPCookieDomain` with the parameters.
 	///
 	///  - parameter domain:   The domain for which this contains cookies.
@@ -55,7 +56,7 @@ struct HTTPCookieDomain
 	///  Adds a cookie to this domain.
 	///
 	///  - parameter cookie: The cookie to add.
-	mutating func addCookie(cookie: HTTPCookie)
+	func addCookie(cookie: HTTPCookie)
 	{
 		cookies.append(cookie)
 		if type == nil
@@ -63,6 +64,31 @@ struct HTTPCookieDomain
 			type = cookie.version
 		}
 	}
+	
+	///  Adds multiple cookies to the domain directly.
+	///
+	///  - parameter cookies: The cookies to add.
+	func addCookies(cookies: [HTTPCookie])
+	{
+		self.cookies.reserveCapacity(self.cookies.count + cookies.count)
+		if type == nil
+		{
+			type = cookies.first?.version
+		}
+		cookies.map { self.cookies.append($0) }
+	}
+	
+	///  Removes cookies for a specific browser.
+	///
+	///  - parameter browser: The browser for which to remove the cookies.
+	///  - returns: The number of cookies removed.
+	func removeCookiesForBrowser(browser: Browser) -> Int
+	{
+		let startCount = cookies.count
+		cookies = cookies.filter { $0.browser != browser }
+		return startCount - cookies.count
+	}
+	
 }
 extension HTTPCookieDomain: Equatable {}
 func ==(lhs: HTTPCookieDomain, rhs: HTTPCookieDomain) -> Bool

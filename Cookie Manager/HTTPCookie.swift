@@ -48,6 +48,9 @@ struct HTTPCookie
 	/// Returns the version of the receiver. Version 0 maps to "old-style" Netscape cookies. Version 1 maps to RFC2965 cookies. There may be future versions.
 	var version: Int
 	
+	/// The browser from where this cookie was acquired.
+	var browser: Browser
+	
 	/// A computed property which converts the version to a user readable string.
 	var versionDescription: String
 	{
@@ -98,9 +101,10 @@ struct HTTPCookie
 	///  Intializes the cookie using an NSHTTPCookie representation. This allows for the cookie to be created easily.
 	///
 	///  - parameter cookie: The cookie based on which this cookie is created.
+	///  - parameter browser: The browser from which this cookie was retrieved
 	///
 	///  - returns: An initialized HTTPCookie.
-	init(cookie: NSHTTPCookie)
+	init(cookie: NSHTTPCookie, browser: Browser)
 	{
 		domain = cookie.domain
 		name = cookie.name
@@ -114,12 +118,13 @@ struct HTTPCookie
 		{
 			comment = cookie.comment
 		}
+		self.browser = browser
 	}
 	
 	///  Intializes the cookie based on the values found from the binary. See the properties of this class for more information about the parameters.
 	///
 	///  - returns: An initialized HTTPCookie
-	init(URL: String, name: String, value: String, path: String, expiryDate: NSDate, creationDate: NSDate, secure: Bool, HTTPOnly: Bool, version: Int, comment: String?)
+	init(URL: String, name: String, value: String, path: String, expiryDate: NSDate, creationDate: NSDate, secure: Bool, HTTPOnly: Bool, version: Int, browser: Browser, comment: String?)
 	{
 		self.domain = URL
 		self.value = value
@@ -133,6 +138,7 @@ struct HTTPCookie
 		{
 			self.comment = comment
 		}
+		self.browser = browser
 	}
 	
 	func shouldBeIncludedForSearchString(string: String) -> Bool
@@ -150,12 +156,13 @@ func ==(lhs: HTTPCookie, rhs: HTTPCookie) -> Bool
 	// Enough properties that if these are all equal the cookie is probably equal.
 	return  lhs.domain == rhs.domain && lhs.name == rhs.name && lhs.value == rhs.value && lhs.version == rhs.version && lhs.secure == rhs.secure
 }
-class HTTPCookieWrapper
-{
-	let cookie: HTTPCookie
-	init(cookie: HTTPCookie)
-	{
-		self.cookie = cookie
-	}
-}
+//class HTTPCookieWrapper
+//{
+//	let cookie: HTTPCookie
+//	init(cookie: HTTPCookie)
+//	{
+//		self.cookie = cookie
+//	}
+//}
+
 

@@ -28,15 +28,53 @@
 // SOFTWARE.
 
 import Foundation
+import AppKit
 
-/// The notification name for when Safari's cookies are changed.
-let safariCookiesChangedNotification = "SafariCookiesChangedNotification"
+let monitorQueue = dispatch_queue_create("ManavGabhawala.cookie-file-monitor", DISPATCH_QUEUE_CONCURRENT)
 
-///  These are the possible errors that the CookieStore can throw.
+///  These are the possible errors that the `CookieStore`s can throw.
 enum CookieError : ErrorType
 {
 	/// A FilePermission error indicates that there was a problem accessing the file and either file doesn't exist or the user doesn't have enough privileges to access the cookie file.
 	case FilePermissionError
 	/// A FileParsing error indicates that there was an issue with reading the cookie file.
 	case FileParsingError
+}
+
+private let safariImage = NSImage(named: "Safari")!
+private let chromeImage = NSImage(named: "Chrome")!
+private let firefoxImage = NSImage(named: "Firefox")!
+
+///  An enumeration of the browsers this utility supports.
+enum Browser : String
+{
+	case Safari
+	case Chrome
+	case Firefox
+	func compare(rhs: Browser) -> NSComparisonResult
+	{
+		guard self != rhs
+		else
+		{
+			return NSComparisonResult.OrderedSame
+		}
+		if self == .Safari || (self == .Chrome && rhs == .Safari)
+		{
+			return NSComparisonResult.OrderedAscending
+		}
+		return NSComparisonResult.OrderedDescending
+	}
+	
+	var image: NSImage
+	{
+		switch self
+		{
+		case .Safari:
+			return safariImage
+		case .Chrome:
+			return chromeImage
+		case .Firefox:
+			return firefoxImage
+		}
+ 	}
 }
