@@ -156,13 +156,5 @@ func ==(lhs: HTTPCookie, rhs: HTTPCookie) -> Bool
 	// Enough properties that if these are all equal the cookie is probably equal.
 	return  lhs.domain == rhs.domain && lhs.name == rhs.name && lhs.value == rhs.value && lhs.version == rhs.version && lhs.secure == rhs.secure
 }
-//class HTTPCookieWrapper
-//{
-//	let cookie: HTTPCookie
-//	init(cookie: HTTPCookie)
-//	{
-//		self.cookie = cookie
-//	}
-//}
 
 

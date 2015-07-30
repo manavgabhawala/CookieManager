@@ -17,7 +17,7 @@ protocol FirefoxCookieStoreDelegate : class
 }
 
 /// This class is responsible for parsing, accessing and writing cookies for `Firefox`
-class FirefoxCookieStore
+final class FirefoxCookieStore
 {
 	weak var delegate: FirefoxCookieStoreDelegate?
 	

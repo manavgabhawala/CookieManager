@@ -21,7 +21,7 @@ protocol CookieStoreDelegate: class
 	func updatedCookies()
 }
 
-class CookieStore
+final class CookieStore
 {
 	weak var delegate: CookieStoreDelegate?
 	
@@ -128,7 +128,7 @@ class CookieStore
 }
 
 // MARK: - Shared
-extension CookieStore
+extension CookieStore : GenericCookieStoreDelegate
 {
 	func startedParsingCookies()
 	{
@@ -148,73 +148,17 @@ extension CookieStore
 			delegate?.finishedParsingCookies()
 		}
 	}
-}
-// MARK: - Safari Store
-extension CookieStore : SafariCookieStoreDelegate
-{
-	func stoppedTrackingSafariCookies()
-	{
-		delegate?.stoppedTrackingCookiesForBrowser(.Safari)
-		safariStore = nil
-	}
-	func safariProgressMade(progress: Double)
+	func progressMade(progress: Double)
 	{
 		myProgress += progress
 		delegate?.madeProgress(myProgress / Double(currentParses))
 	}
-	func safariDomainUpdated(domain: String, withCookies cookies: [HTTPCookie])
+	func domainUpdated(domain: String, withCookies cookies: [HTTPCookie], forBrowser browser: Browser)
 	{
 		if let existingDomain = cookieHash[domain]
 		{
 			cookieCount -= existingDomain.cookies.count
-			existingDomain.removeCookiesForBrowser(.Safari)
-			existingDomain.addCookies(cookies)
-			cookieCount += existingDomain.cookies.count
-		}
-		else
-		{
-			guard cookies.count > 0
-			else
-			{
-				return
-			}
-			cookieCount += cookies.count
-			cookieHash[domain] = HTTPCookieDomain(domain: domain, cookies: cookies, capacity: cookies.count)
-		}
-	}
-	func safariLostDomain(domain: String)
-	{
-		guard let HTTPDomain = cookieHash[domain]
-		else
-		{
-			return
-		}
-		cookieCount -= HTTPDomain.removeCookiesForBrowser(.Safari)
-		if HTTPDomain.cookies.count == 0
-		{
-			cookieHash.removeValueForKey(domain)
-		}
-	}
-}
-// MARK: - Chrome Store
-extension CookieStore: ChromeCookieStoreDelegate
-{
-	func stoppedTrackingChromeCookies()
-	{
-		delegate?.stoppedTrackingCookiesForBrowser(.Chrome)
-		chromeStore = nil
-	}
-	func chromeProgressMade(progress: Double)
-	{
-		myProgress += progress
-		delegate?.madeProgress(myProgress / Double(currentParses))
-	}
-	func chromeDomainUpdated(domain: String, withCookies cookies: [HTTPCookie])
-	{
-		if let existingDomain = cookieHash[domain]
-		{
-			cookieCount -= existingDomain.cookies.count
-			existingDomain.removeCookiesForBrowser(.Chrome)
+			existingDomain.removeCookiesForBrowser(browser)
 			existingDomain.addCookies(cookies)
 			cookieCount += existingDomain.cookies.count
 		}
@@ -229,20 +173,54 @@ extension CookieStore: ChromeCookieStoreDelegate
 			cookieHash[domain] = HTTPCookieDomain(domain: domain, cookies: cookies, capacity: cookies.count)
 		}
 	}
-	func chromeLostDomain(domain: String)
+	func browser(browser: Browser, lostDomain domain: String)
 	{
 		guard let HTTPDomain = cookieHash[domain]
-		else
+			else
 		{
 			return
 		}
-		cookieCount -= HTTPDomain.removeCookiesForBrowser(.Chrome)
+		cookieCount -= HTTPDomain.removeCookiesForBrowser(browser)
 		if HTTPDomain.cookies.count == 0
 		{
 			cookieHash.removeValueForKey(domain)
 		}
 	}
 	
+}
+// MARK: - Safari Store
+extension CookieStore : SafariCookieStoreDelegate
+{
+	func stoppedTrackingSafariCookies()
+	{
+		delegate?.stoppedTrackingCookiesForBrowser(.Safari)
+		safariStore = nil
+		cookieHash.map { $0.1.removeCookiesForBrowser(.Safari) }
+		for (domain, store) in cookieHash
+		{
+			if store.cookies.count == 0
+			{
+				cookieHash.removeValueForKey(domain)
+			}
+		}
+	}
+}
+// MARK: - Chrome Store
+extension CookieStore: ChromeCookieStoreDelegate
+{
+	func stoppedTrackingChromeCookies()
+	{
+		delegate?.stoppedTrackingCookiesForBrowser(.Chrome)
+		chromeStore = nil
+		cookieHash.map { $0.1.removeCookiesForBrowser(.Chrome) }
+		for (domain, store) in cookieHash
+		{
+			if store.cookies.count == 0
+			{
+				cookieHash.removeValueForKey(domain)
+			}
+		}
+ 	}
 }
 // MARK: - Firefox Store
 extension CookieStore : FirefoxCookieStoreDelegate

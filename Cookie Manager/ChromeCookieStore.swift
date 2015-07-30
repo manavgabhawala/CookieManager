@@ -30,27 +30,20 @@
 import Foundation
 
 /// A callback mechanism for the chrome cookie store.
-protocol ChromeCookieStoreDelegate : class
+protocol ChromeCookieStoreDelegate : class, GenericCookieStoreDelegate
 {
 	func stoppedTrackingChromeCookies()
-	func startedParsingCookies()
-	func finishedParsingCookies()
-	func chromeProgressMade(progress: Double)
-	func chromeDomainUpdated(domain: String, withCookies cookies: [HTTPCookie])
-	func chromeLostDomain(domain: String)
 }
 /// This class is responsible for parsing, accessing and writing cookies for `Chrome`
-class ChromeCookieStore
+final class ChromeCookieStore : GenericCookieStore
 {
-	private let cookiesURL : NSURL
 	private let db : FMDatabase
 	weak var delegate: ChromeCookieStoreDelegate?
-	
-	private var currentDomains = [String]()
 	
 	init?(delegate: ChromeCookieStoreDelegate)
 	{
 		self.delegate = delegate
+		let cookiesURL: NSURL
 		do
 		{
 			let fileManager = NSFileManager()
@@ -60,12 +53,14 @@ class ChromeCookieStore
 			else
 			{
 				db = FMDatabase()
+				super.init(cookiesURL: cookiesURL)
 				return nil
 			}
 			guard let db = FMDatabase(path: path) where db.open()
 			else
 			{
 				self.db = FMDatabase()
+				super.init(cookiesURL: cookiesURL)
 				return nil
 			}
 			self.db = db
@@ -74,8 +69,10 @@ class ChromeCookieStore
 		{
 			cookiesURL = NSURL(string: "")!
 			db = FMDatabase()
+			super.init(cookiesURL: cookiesURL)
 			return nil
 		}
+		super.init(cookiesURL: cookiesURL)
 		do
 		{
 			try updateCookies()
@@ -86,65 +83,7 @@ class ChromeCookieStore
 		}
 	}
 	
-	///  Creates a file descriptor to the cookies file.
-	///
-	///  - throws: `CookieError` with `FilePermissionError` if the fd could not be created.
-	///  - returns: The file descriptor to the cookies file.
-	func createFileDescriptor() throws -> Int32
-	{
-		var fd : CInt = 0
-		var numTries = 0
-		repeat
-		{
-			fd = open(self.cookiesURL.path!.fileSystemRepresentation(), O_EVTONLY, 0)
-			if fd == 0
-			{
-				sleep(1)
-				++numTries
-			}
-		} while fd == 0 && numTries > 10
-		if numTries >= 10 || fd == 0
-		{
-			throw CookieError.FilePermissionError
-		}
-		return fd
-	}
-	
-	/// Begins monitoring changes to the cookies file. It blocks on a background thread until the file is updated. Once it is updated, it calls `updateCookies`
-	func startMonitoringCookieChanges()
-	{
-		let kQueue = kqueue()
-		var kEvent = kevent()
-		var theEvent = kevent()
-		kEvent.filter = Int16(EVFILT_VNODE)
-		kEvent.flags = UInt16(EV_ADD | EV_ENABLE | EV_CLEAR)
-		kEvent.fflags = UInt32(NOTE_WRITE | NOTE_DELETE)
-		kEvent.data = 0
-		kEvent.udata = nil
-		// Block on a background thread.
-		dispatch_async(monitorQueue, {
-			while true
-			{
-				do
-				{
-					let fd = try self.createFileDescriptor() // we need a new fd every time so that we get the refreshed changes.
-					kEvent.ident = UInt(fd)
-					kevent(kQueue, &kEvent, 1, nil, 0, nil) // watching for changes to the cookies
-					kevent(kQueue, nil, 0, &theEvent, 1, nil) // block!
-					try self.updateCookies() // Now when this is executed the file was changed.
-				}
-				catch
-				{
-					// Error handling.
-					self.delegate?.stoppedTrackingChromeCookies()
-					return
-				}
-			}
-		})
-	}
-	
-	
-	func updateCookies() throws
+	override func updateCookies(fd: Int32? = nil) throws
 	{
 		delegate?.startedParsingCookies()
 		
@@ -154,8 +93,9 @@ class ChromeCookieStore
 			throw CookieError.FileParsingError
 		}
 		
-		var domainsForCurrentUpdate = currentDomains
-		currentDomains.removeAll(keepCapacity: true)
+		var domainsForCurrentUpdate = cookieDomains
+		
+		cookieDomains.removeAll(keepCapacity: true)
 		
 		let cookieProgress = 1.0 / Double(count)
 		var domain : HTTPCookieDomain?
@@ -184,21 +124,21 @@ class ChromeCookieStore
 			{
 				if let domain = domain
 				{
-					delegate?.chromeDomainUpdated(URL, withCookies: domain.cookies)
+					delegate?.domainUpdated(URL, withCookies: domain.cookies, forBrowser: .Chrome)
 				}
-				currentDomains.append(URL)
+				cookieDomains.append(URL)
 				domain = HTTPCookieDomain(domain: URL, cookies: [cookie], capacity: 1)
 			}
 			else
 			{
 				domain!.addCookie(cookie)
 			}
-			delegate?.chromeProgressMade(cookieProgress)
+			delegate?.progressMade(cookieProgress)
 		}
 		
 		for domain in domainsForCurrentUpdate
 		{
-			delegate?.chromeLostDomain(domain)
+			delegate?.browser(.Chrome, lostDomain: domain)
 		}
 		delegate?.finishedParsingCookies()
 	}

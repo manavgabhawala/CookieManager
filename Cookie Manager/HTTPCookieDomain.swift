@@ -95,12 +95,3 @@ func ==(lhs: HTTPCookieDomain, rhs: HTTPCookieDomain) -> Bool
 {
 	return lhs.domain == rhs.domain && lhs.cookies.count == rhs.cookies.count
 }
-
-class HTTPCookieDomainWrapper
-{
-	let domain: HTTPCookieDomain
-	init(domain: HTTPCookieDomain)
-	{
-		self.domain = domain
-	}
-}

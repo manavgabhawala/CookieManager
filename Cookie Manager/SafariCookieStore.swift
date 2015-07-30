@@ -30,19 +30,14 @@
 import Foundation
 
 /// A callback mechanism for the safari cookie store.
-protocol SafariCookieStoreDelegate : class
+protocol SafariCookieStoreDelegate : class, GenericCookieStoreDelegate
 {
 	func stoppedTrackingSafariCookies()
-	func startedParsingCookies()
-	func finishedParsingCookies()
-	func safariDomainUpdated(domain: String, withCookies cookies: [HTTPCookie])
-	func safariLostDomain(domain: String)
-	func safariProgressMade(progress: Double)
 }
 
 
 /// This class is responsible for parsing, accessing and writing cookies for `Safari`
-class SafariCookieStore
+final class SafariCookieStore: GenericCookieStore
 {
 	/// A jar of cookies created from the shared cookie store.
 	private let cookieJar = NSHTTPCookieStorage.sharedHTTPCookieStorage()
@@ -50,17 +45,13 @@ class SafariCookieStore
 	/// The delegate for the cookie store.
 	weak var delegate: SafariCookieStoreDelegate?
 	
-	/// A URL to the cookies file setup inside the initializer.
-	private let cookiesURL: NSURL
-	
-	private var cookieDomains = [String]()
-	
 	///  Initializes the Safari cookie store.
 	/// - Warning: This function takes a long time to run because the cookie store takes time to setup. Perform initialization on a background thread.
 	///  - returns: nil if something goes wrong like if the cookie's file cannot be accessed. Otherwise this returns an initialized `CookieStore`.
 	init?(delegate: SafariCookieStoreDelegate)
 	{
 		self.delegate = delegate
+		let cookiesURL : NSURL
 		do
 		{
 			let fileManager = NSFileManager()
@@ -72,9 +63,11 @@ class SafariCookieStore
 			cookiesURL = NSURL(string: "")!
 			if #available(OSX 10.11, *)
 			{
+				super.init(cookiesURL: cookiesURL)
 				return nil  // On later versions of OS X accessing the global store is not possible so we cannot do anything useful if the file wasn't found
 			}
 		}
+		super.init(cookiesURL: cookiesURL)
 		if #available(OSX 10.11, *) // If we are on a later version of OS X use the updateCookies method otherwise default to the other way.
 		{
 			do
@@ -95,67 +88,10 @@ class SafariCookieStore
 		
 	}
 	
-	///  Creates a file descriptor to the cookies file.
-	///
-	///  - throws: `CookieError` with `FilePermissionError` if the fd could not be created.
-	///  - returns: The file descriptor to the cookies file.
-	func createFileDescriptor() throws -> Int32
-	{
-		var fd : CInt = 0
-		var numTries = 0
-		repeat
-		{
-			fd = open(self.cookiesURL.path!.fileSystemRepresentation(), O_EVTONLY, 0)
-			if fd == 0
-			{
-				sleep(1)
-				++numTries
-			}
-		} while fd == 0 && numTries > 10
-		if numTries >= 10 || fd == 0
-		{
-			throw CookieError.FilePermissionError
-		}
-		return fd
-	}
-	
-	/// Begins monitoring changes to the cookies file. It blocks on a background thread until the file is updated. Once it is updated, it calls `updateCookies`
-	func startMonitoringCookieChanges()
-	{
-		let kQueue = kqueue()
-		var kEvent = kevent()
-		var theEvent = kevent()
-		kEvent.filter = Int16(EVFILT_VNODE)
-		kEvent.flags = UInt16(EV_ADD | EV_ENABLE | EV_CLEAR)
-		kEvent.fflags = UInt32(NOTE_WRITE | NOTE_DELETE)
-		kEvent.data = 0
-		kEvent.udata = nil
-		// Block on a background thread.
-		dispatch_async(monitorQueue, {
-			while true
-			{
-				do
-				{
-					let fd = try self.createFileDescriptor() // we need a new fd every time so that we get the refreshed changes.
-					kEvent.ident = UInt(fd)
-					kevent(kQueue, &kEvent, 1, nil, 0, nil) // watching for changes to the cookies
-					kevent(kQueue, nil, 0, &theEvent, 1, nil) // block!
-					try self.updateCookies(fd) // Now when this is executed the file was changed.
-				}
-				catch
-				{
-					// Error handling.
-					self.delegate?.stoppedTrackingSafariCookies()
-					return
-				}
-			}
-		})
-	}
-	
 	///  Updates the cookie store to contain all the cookies.
 	///  - Parameter fileDescriptor: An optional file descriptor that the `callee` can use to parse the cookies, only use this parameter if the `caller` knows for sure it has a valid file descriptor to the cookies file. If you call it without this parameter or with nil, it creates a file descriptor on its own.
 	///  - Throws: `CookieError` with `FilePermissionError` if the file descriptor could not be created. A `FileParsingError` if the file could not be parsed properly however, the function tries to be as robust as possible and only throws errors when absolutely necessary. As a result not all the domains will have associated cookies.
-	func updateCookies(fileDescriptor: Int32? = nil) throws
+	override func updateCookies(fileDescriptor: Int32? = nil) throws
 	{
 		var startedBackgroundParsing = false
 		
@@ -216,7 +152,7 @@ class SafariCookieStore
 			self.cookieDomains.removeAll(keepCapacity: true)
 			for page in pages
 			{
-				self.delegate?.safariProgressMade(pageProgress)
+				self.delegate?.progressMade(pageProgress)
 				var location = 0
 				let pageHeaderRange = NSRange(location: location, length: 4) // Page header is always the first 4 bytes.
 				location += pageHeaderRange.length
@@ -354,11 +290,11 @@ class SafariCookieStore
 				}
 				thisCookieDomain.removeElement(domain.domain)
 				self.cookieDomains.append(domain.domain)
-				self.delegate?.safariDomainUpdated(domain.domain, withCookies: domain.cookies)
+				self.delegate?.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Safari)
 			}
 			for domain in thisCookieDomain
 			{
-				self.delegate?.safariLostDomain(domain)
+				self.delegate?.browser(.Safari, lostDomain: domain)
 			}
 			self.delegate?.finishedParsingCookies()
 		})
@@ -396,7 +332,7 @@ class SafariCookieStore
 		let cookieProgress = 1.0 / doubleCount
 		for cookie in jarCookies
 		{
-			delegate?.safariProgressMade(cookieProgress)
+			delegate?.progressMade(cookieProgress)
 			if domain == nil
 			{
 				domain = HTTPCookieDomain(domain: cookie.domain, cookies: [HTTPCookie(cookie: cookie, browser: .Safari)], capacity: 1)
@@ -409,14 +345,14 @@ class SafariCookieStore
 				}
 				else
 				{
-					delegate?.safariDomainUpdated(domain!.domain, withCookies: domain!.cookies)
+					delegate?.domainUpdated(domain!.domain, withCookies: domain!.cookies, forBrowser: .Safari)
 					domain = HTTPCookieDomain(domain: cookie.domain, cookies: [HTTPCookie(cookie: cookie, browser: .Safari)], capacity: 1)
 				}
 			}
 		}
 		if let domain = domain
 		{
-			delegate?.safariDomainUpdated(domain.domain, withCookies: domain.cookies) // Add the last domain that didn't get added.
+			delegate?.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Safari) // Add the last domain that didn't get added.
 		}
 		delegate?.finishedParsingCookies()
 	}

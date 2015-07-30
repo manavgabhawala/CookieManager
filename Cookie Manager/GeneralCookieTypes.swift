@@ -58,7 +58,7 @@ enum Browser : String
 		{
 			return NSComparisonResult.OrderedSame
 		}
-		if self == .Safari || (self == .Chrome && rhs == .Safari)
+		if self == .Safari || (self == .Chrome && rhs != .Safari)
 		{
 			return NSComparisonResult.OrderedAscending
 		}
@@ -77,4 +77,30 @@ enum Browser : String
 			return firefoxImage
 		}
  	}
+}
+
+protocol GenericCookieStoreDelegate
+{
+	///  Called when the cookie store begins parsing cookies if there is a change in the cookie store, or for the first time data is being read.
+	func startedParsingCookies()
+	
+	///  Called when the cookie store finishes parsing cookies. This call is balanced with calls to `startedParsingCookies`
+	func finishedParsingCookies()
+	///  Called when a store wants to report progress made. This call is done as frequently as needed for a smooth progress update yet as infrequently as possible without an impact to the smoothness of the progress being updated.
+ 	///
+ 	///  - parameter: progress The progress made. This value should be bound between `0.0` and `1.0` where `0.0` indicates no progress has been made so far. The progress made should be called with the value of the amount of progress made **since** the last call to the progress made method on the delegate.
+	func progressMade(progress: Double)
+	
+	///  Called when the cookie store has parsed and now recieved an entire domain.
+ 	///
+ 	///  - parameter domain:  The domain that was parsed.
+ 	///  - parameter cookies: The cookies associated with the domain parsed.
+ 	///  - parameter browser: The browser for which the domain was parsed.
+	func domainUpdated(domain: String, withCookies cookies: [HTTPCookie], forBrowser browser: Browser)
+	
+	///  Called just before parsing completes where the store can notify its delegate that it no longer has any cookies for a particular domain that it used to.
+ 	///
+ 	///  - parameter browser: The browser for which the domain was lost.
+	 ///  - parameter domain:  The domain lost.
+	func browser(browser: Browser, lostDomain domain: String)
 }

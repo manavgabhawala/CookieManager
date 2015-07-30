@@ -133,7 +133,7 @@
                                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                         <subviews>
                                             <tableView verticalHuggingPriority="750" allowsExpansionToolTips="YES" columnAutoresizingStyle="lastColumnOnly" columnSelection="YES" autosaveColumns="NO" autosaveName="cookiesTable" rowHeight="46" headerView="kyG-SJ-vGg" viewBased="YES" id="fRa-YG-57S">
-                                                <rect key="frame" x="0.0" y="0.0" width="985" height="589"/>
+                                                <rect key="frame" x="0.0" y="0.0" width="1010" height="589"/>
                                                 <autoresizingMask key="autoresizingMask"/>
                                                 <animations/>
                                                 <size key="intercellSpacing" width="5" height="2"/>
@@ -502,7 +502,7 @@
                                                             </tableCellView>
                                                         </prototypeCellViews>
                                                     </tableColumn>
-                                                    <tableColumn identifier="comment" width="75" minWidth="50" maxWidth="500" id="BKT-Y1-PMh">
+                                                    <tableColumn identifier="comment" width="100" minWidth="50" maxWidth="500" id="BKT-Y1-PMh">
                                                         <tableHeaderCell key="headerCell" lineBreakMode="truncatingTail" borderStyle="border" alignment="left" title="Comments">
                                                             <font key="font" metaFont="smallSystem"/>
                                                             <color key="textColor" name="headerTextColor" catalog="System" colorSpace="catalog"/>
@@ -517,11 +517,11 @@
                                                         <tableColumnResizingMask key="resizingMask" resizeWithTable="YES" userResizable="YES"/>
                                                         <prototypeCellViews>
                                                             <tableCellView identifier="comment_cell" id="Tyt-dk-rWK">
-                                                                <rect key="frame" x="907" y="1" width="75" height="17"/>
+                                                                <rect key="frame" x="907" y="1" width="100" height="17"/>
                                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                                                 <subviews>
                                                                     <textField verticalHuggingPriority="750" horizontalCompressionResistancePriority="250" translatesAutoresizingMaskIntoConstraints="NO" id="s4D-LE-bBv">
-                                                                        <rect key="frame" x="0.0" y="0.0" width="75" height="17"/>
+                                                                        <rect key="frame" x="0.0" y="0.0" width="100" height="17"/>
                                                                         <animations/>
                                                                         <textFieldCell key="cell" lineBreakMode="truncatingTail" sendsActionOnEndEditing="YES" title="Table View Cell" id="0C4-nT-7GQ">
                                                                             <font key="font" metaFont="system"/>
@@ -560,7 +560,7 @@
                                         <animations/>
                                     </scroller>
                                     <tableHeaderView key="headerView" id="kyG-SJ-vGg">
-                                        <rect key="frame" x="0.0" y="0.0" width="985" height="23"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="1010" height="23"/>
                                         <autoresizingMask key="autoresizingMask"/>
                                         <animations/>
                                     </tableHeaderView>

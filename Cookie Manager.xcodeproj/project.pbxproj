@@ -30,6 +30,7 @@
 		825691101B6900B3005B5FA6 /* FMResultSet.m in Sources */ = {isa = PBXBuildFile; fileRef = 8256910B1B6900B3005B5FA6 /* FMResultSet.m */; };
 		825691121B69062E005B5FA6 /* CookieStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 825691111B69062E005B5FA6 /* CookieStore.swift */; };
 		825691141B69EBE5005B5FA6 /* FirefoxCookieStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 825691131B69EBE5005B5FA6 /* FirefoxCookieStore.swift */; };
+		825691161B6A3ADD005B5FA6 /* GenericCookieStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 825691151B6A3ADD005B5FA6 /* GenericCookieStore.swift */; };
 		829B687F1B62554400E3A020 /* HTTPCookieDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 829B687E1B62554400E3A020 /* HTTPCookieDomain.swift */; };
 /* End PBXBuildFile section */
 
@@ -72,6 +73,7 @@
 		8256910B1B6900B3005B5FA6 /* FMResultSet.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FMResultSet.m; sourceTree = "<group>"; };
 		825691111B69062E005B5FA6 /* CookieStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CookieStore.swift; sourceTree = "<group>"; };
 		825691131B69EBE5005B5FA6 /* FirefoxCookieStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FirefoxCookieStore.swift; sourceTree = "<group>"; };
+		825691151B6A3ADD005B5FA6 /* GenericCookieStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GenericCookieStore.swift; sourceTree = "<group>"; };
 		829B687E1B62554400E3A020 /* HTTPCookieDomain.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HTTPCookieDomain.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -197,6 +199,7 @@
 				824C86641B60C27B0001DE9E /* HTTPCookie.swift */,
 				829B687E1B62554400E3A020 /* HTTPCookieDomain.swift */,
 				825691111B69062E005B5FA6 /* CookieStore.swift */,
+				825691151B6A3ADD005B5FA6 /* GenericCookieStore.swift */,
 				825413001B5F9BF7000AC015 /* SafariCookieStore.swift */,
 				825690EB1B68FC76005B5FA6 /* ChromeCookieStore.swift */,
 				825691131B69EBE5005B5FA6 /* FirefoxCookieStore.swift */,
@@ -276,6 +279,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				825691161B6A3ADD005B5FA6 /* GenericCookieStore.swift in Sources */,
 				825690FA1B69008D005B5FA6 /* FMDatabase+InMemoryOnDiskIO.m in Sources */,
 				825690FF1B69009D005B5FA6 /* FMDatabaseVariadic.swift in Sources */,
 				824C86671B60CBA50001DE9E /* GeneralCookieTypes.swift in Sources */,
