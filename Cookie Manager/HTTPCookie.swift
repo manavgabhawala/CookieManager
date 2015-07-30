@@ -97,7 +97,6 @@ struct HTTPCookie
 		
 	}
 	
-	
 	///  Intializes the cookie using an NSHTTPCookie representation. This allows for the cookie to be created easily.
 	///
 	///  - parameter cookie: The cookie based on which this cookie is created.
@@ -154,7 +153,7 @@ extension HTTPCookie: Equatable
 func ==(lhs: HTTPCookie, rhs: HTTPCookie) -> Bool
 {
 	// Enough properties that if these are all equal the cookie is probably equal.
-	return  lhs.domain == rhs.domain && lhs.name == rhs.name && lhs.value == rhs.value && lhs.version == rhs.version && lhs.secure == rhs.secure
+	return  lhs.domain == rhs.domain && lhs.name == rhs.name && lhs.value == rhs.value && lhs.version == rhs.version && lhs.secure == rhs.secure && lhs.HTTPOnly == rhs.HTTPOnly && lhs.expiryDate == rhs.expiryDate && lhs.browser == rhs.browser
 }
 
 

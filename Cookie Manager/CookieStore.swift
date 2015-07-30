@@ -29,11 +29,13 @@ final class CookieStore
 	private var chromeStore: ChromeCookieStore?
 	private var firefoxStore : FirefoxCookieStore?
 	
+	private let cookieHashQueue : dispatch_queue_t
+	
 	private var cookieHash = [String : HTTPCookieDomain]()
 	{
 		didSet
 		{
-			if cookieHash.count % 20 == 0
+			if cookieHash.count % 50 == 0
 			{
 				delegate?.updatedCookies()
 			}
@@ -56,6 +58,7 @@ final class CookieStore
 	init(delegate: CookieStoreDelegate? = nil)
 	{
 		self.delegate = delegate
+		cookieHashQueue = dispatch_queue_create("ManavGabhawala.cookie-hash", DISPATCH_QUEUE_SERIAL)
 		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
 			self.safariStore = SafariCookieStore(delegate: self)
 		})
@@ -155,42 +158,71 @@ extension CookieStore : GenericCookieStoreDelegate
 	}
 	func domainUpdated(domain: String, withCookies cookies: [HTTPCookie], forBrowser browser: Browser)
 	{
-		if let existingDomain = cookieHash[domain]
-		{
-			cookieCount -= existingDomain.cookies.count
-			existingDomain.removeCookiesForBrowser(browser)
-			existingDomain.addCookies(cookies)
-			cookieCount += existingDomain.cookies.count
-		}
-		else
-		{
-			guard cookies.count > 0
-				else
+		self.domainUpdated(domain, withCookies: cookies, forBrowser: browser, progressTime: nil)
+	}
+	
+	func domainUpdated(domain: String, withCookies cookies: [HTTPCookie], forBrowser browser: Browser, progressTime: Double?)
+	{
+		dispatch_async(cookieHashQueue, {
+			defer
 			{
-				return
+				if let prog = progressTime
+				{
+					self.progressMade(prog)
+				}
 			}
-			cookieCount += cookies.count
-			cookieHash[domain] = HTTPCookieDomain(domain: domain, cookies: cookies, capacity: cookies.count)
-		}
+			if let existingDomain = self.cookieHash[domain]
+			{
+				guard (existingDomain.cookies.filter { $0.browser == browser }) != cookies
+					else
+				{
+					return
+				}
+				self.cookieCount -= existingDomain.cookies.count
+				existingDomain.removeCookiesForBrowser(browser)
+				existingDomain.addCookies(cookies)
+				self.cookieCount += existingDomain.cookies.count
+			}
+			else
+			{
+				guard cookies.count > 0
+					else
+				{
+					return
+				}
+				self.cookieCount += cookies.count
+				self.cookieHash[domain] = HTTPCookieDomain(domain: domain, cookies: cookies, capacity: cookies.count)
+			}
+		})
+		
 	}
 	func browser(browser: Browser, lostDomain domain: String)
 	{
-		guard let HTTPDomain = cookieHash[domain]
+		dispatch_async(cookieHashQueue, {
+			guard let HTTPDomain = self.cookieHash[domain]
 			else
-		{
-			return
-		}
-		cookieCount -= HTTPDomain.removeCookiesForBrowser(browser)
-		if HTTPDomain.cookies.count == 0
-		{
-			cookieHash.removeValueForKey(domain)
-		}
+			{
+				return
+			}
+			self.cookieCount -= HTTPDomain.removeCookiesForBrowser(browser)
+			if HTTPDomain.cookies.count == 0
+			{
+				self.cookieHash.removeValueForKey(domain)
+			}
+		})
 	}
 	
 }
 // MARK: - Safari Store
 extension CookieStore : SafariCookieStoreDelegate
 {
+	func safariDomainsUpdated(domains: [(domain: String, cookies: [HTTPCookie])], eachProgress: Double)
+	{
+		for domain in domains
+		{
+			self.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Safari, progressTime: eachProgress)
+		}
+	}
 	func stoppedTrackingSafariCookies()
 	{
 		delegate?.stoppedTrackingCookiesForBrowser(.Safari)

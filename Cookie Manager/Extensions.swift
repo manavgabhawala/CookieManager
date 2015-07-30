@@ -62,6 +62,12 @@ extension String
 	///  - returns: An initialized string with the characters till a null character or `\0` was read or if the data couldn't be converted to a string using the encoding specified. This can return an empty `String` too if the first character read was null.
 	init(readData data: NSData, fromLocationTillNullChar location: Int, encoding: NSStringEncoding = NSUTF8StringEncoding)
 	{
+		if encoding == NSUTF8StringEncoding
+		{
+			let dataPointer = UnsafePointer<Int8>(data.bytes.advancedBy(location))
+			self = NSString(UTF8String: dataPointer) as! String
+			return
+		}
 		self = ""
 		var range = NSRange(location: location, length: 1)
 		while let str = String(data: data.subdataWithRange(range), encoding: encoding) where str != "\0"
@@ -145,7 +151,7 @@ extension Double
 	}
 }
 
-extension NSDate
+extension NSDate : Comparable
 {
 	///  A convenience initializer for NSDate that creates an NSDate using an epochBinary data of length 8. The underlying double in the binary data must be a date of the form of time interval in the Mac + iOS epoch format, i.e. the reference date is 1/1/2001. This method only supports `BigEndian` endianness.
 	///
@@ -158,6 +164,14 @@ extension NSDate
 		let timeInterval = Double(binary: data, endian: .BigEndian)
 		self.init(timeIntervalSinceReferenceDate: timeInterval)
 	}
+}
+public func < (lhs: NSDate, rhs: NSDate) -> Bool
+{
+	return lhs.compare(rhs) == .OrderedAscending
+}
+public func ==(lhs: NSDate, rhs: NSDate) -> Bool
+{
+	return lhs.compare(rhs) == .OrderedSame
 }
 
 extension Array where Element : Equatable

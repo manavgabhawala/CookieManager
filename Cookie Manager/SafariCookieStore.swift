@@ -33,6 +33,7 @@ import Foundation
 protocol SafariCookieStoreDelegate : class, GenericCookieStoreDelegate
 {
 	func stoppedTrackingSafariCookies()
+	func safariDomainsUpdated(domains: [(domain: String, cookies: [HTTPCookie])], eachProgress: Double)
 }
 
 
@@ -96,7 +97,6 @@ final class SafariCookieStore: GenericCookieStore
 		var startedBackgroundParsing = false
 		
 		delegate?.startedParsingCookies()
-		var cookieStore = [HTTPCookieDomain]()
 		let file: NSFileHandle
 		if let fd = fileDescriptor
 		{
@@ -140,7 +140,6 @@ final class SafariCookieStore: GenericCookieStore
 		// Get the actual page data using the sizes.
 		var pages = [NSData]()
 		pages.reserveCapacity(numberOfPages)
-		cookieStore.reserveCapacity(numberOfPages)
 		for size in pageSizes
 		{
 			pages.append(file.readDataOfLength(size))
@@ -150,9 +149,11 @@ final class SafariCookieStore: GenericCookieStore
 		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
 			var thisCookieDomain = self.cookieDomains
 			self.cookieDomains.removeAll(keepCapacity: true)
+			var cachedCookieDomains = [(domain: String, cookies: [HTTPCookie])]()
+			cachedCookieDomains.reserveCapacity(10)
 			for page in pages
 			{
-				self.delegate?.progressMade(pageProgress)
+//				self.delegate?.progressMade(pageProgress)
 				var location = 0
 				let pageHeaderRange = NSRange(location: location, length: 4) // Page header is always the first 4 bytes.
 				location += pageHeaderRange.length
@@ -290,8 +291,14 @@ final class SafariCookieStore: GenericCookieStore
 				}
 				thisCookieDomain.removeElement(domain.domain)
 				self.cookieDomains.append(domain.domain)
-				self.delegate?.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Safari)
+				cachedCookieDomains.append((domain: domain.domain, cookies: domain.cookies))
+				if cachedCookieDomains.count >= 10
+				{
+					self.delegate?.safariDomainsUpdated(cachedCookieDomains, eachProgress: pageProgress)
+					cachedCookieDomains.removeAll(keepCapacity: true)
+				}
 			}
+			self.delegate?.safariDomainsUpdated(cachedCookieDomains, eachProgress: pageProgress)
 			for domain in thisCookieDomain
 			{
 				self.delegate?.browser(.Safari, lostDomain: domain)

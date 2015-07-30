@@ -184,6 +184,27 @@
 			path = "FMDB/Swift extensions";
 			sourceTree = "<group>";
 		};
+		8256913A1B6A5684005B5FA6 /* Stores */ = {
+			isa = PBXGroup;
+			children = (
+				825691151B6A3ADD005B5FA6 /* GenericCookieStore.swift */,
+				825413001B5F9BF7000AC015 /* SafariCookieStore.swift */,
+				825690EB1B68FC76005B5FA6 /* ChromeCookieStore.swift */,
+				825691131B69EBE5005B5FA6 /* FirefoxCookieStore.swift */,
+			);
+			name = Stores;
+			sourceTree = "<group>";
+		};
+		8256913B1B6A568B005B5FA6 /* General Models */ = {
+			isa = PBXGroup;
+			children = (
+				824C86661B60CBA50001DE9E /* GeneralCookieTypes.swift */,
+				824C86641B60C27B0001DE9E /* HTTPCookie.swift */,
+				829B687E1B62554400E3A020 /* HTTPCookieDomain.swift */,
+			);
+			name = "General Models";
+			sourceTree = "<group>";
+		};
 		829B687C1B62529B00E3A020 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
@@ -199,14 +220,9 @@
 		829B687D1B6252AE00E3A020 /* Cookie Models */ = {
 			isa = PBXGroup;
 			children = (
-				824C86661B60CBA50001DE9E /* GeneralCookieTypes.swift */,
-				824C86641B60C27B0001DE9E /* HTTPCookie.swift */,
-				829B687E1B62554400E3A020 /* HTTPCookieDomain.swift */,
 				825691111B69062E005B5FA6 /* CookieStore.swift */,
-				825691151B6A3ADD005B5FA6 /* GenericCookieStore.swift */,
-				825413001B5F9BF7000AC015 /* SafariCookieStore.swift */,
-				825690EB1B68FC76005B5FA6 /* ChromeCookieStore.swift */,
-				825691131B69EBE5005B5FA6 /* FirefoxCookieStore.swift */,
+				8256913B1B6A568B005B5FA6 /* General Models */,
+				8256913A1B6A5684005B5FA6 /* Stores */,
 			);
 			name = "Cookie Models";
 			sourceTree = "<group>";
@@ -410,11 +426,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = "Cookie Manager/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/Cookie",
-					Manager,
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				PRODUCT_BUNDLE_IDENTIFIER = "ManavGabhawala.Cookie-Manager";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -432,11 +444,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = "Cookie Manager/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/Cookie",
-					Manager,
-				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				PRODUCT_BUNDLE_IDENTIFIER = "ManavGabhawala.Cookie-Manager";
 				PRODUCT_NAME = "$(TARGET_NAME)";
