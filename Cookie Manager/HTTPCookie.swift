@@ -94,8 +94,12 @@ struct HTTPCookie
 			}
 			return NSHTTPCookie(properties: properties)!
 		}
-		
 	}
+	
+	
+	// MARK: - Internal data properties
+	var firefoxID: Int?
+	var creationDate: NSDate?
 	
 	///  Intializes the cookie using an NSHTTPCookie representation. This allows for the cookie to be created easily.
 	///
@@ -133,6 +137,7 @@ struct HTTPCookie
 		self.HTTPOnly = HTTPOnly
 		self.secure = secure
 		self.version = version
+		self.creationDate = creationDate
 		if self.version >= 1
 		{
 			self.comment = comment

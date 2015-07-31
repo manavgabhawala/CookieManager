@@ -39,6 +39,7 @@ class MainViewController: NSViewController
 	var store : CookieStore!
 	
 	var selectedCookies = [HTTPCookie]()
+	var highlightedCookies = [HTTPCookie]()
 	
 	var searchDomains : [HTTPCookieDomain]?
 	
@@ -67,6 +68,13 @@ class MainViewController: NSViewController
 	{
 		super.viewDidAppear()
 		view.window?.toolbar = toolbar
+		for item in toolbar.items
+		{
+			if item.action == "removeCookie:"
+			{
+				item.enabled = false
+			}
+		}
 	}
 }
 // MARK: - Safari Cookie reader
@@ -117,9 +125,28 @@ extension MainViewController : CookieStoreDelegate
 			self.updateLabels()
 			self.sourceList.reloadData()
 		})
-
 	}
-	
+	func fullUpdate()
+	{
+		dispatch_async(dispatch_get_main_queue(), {
+			let selectedIndices = self.sourceList.selectedRowIndexes
+			self.sourceList.reloadData()
+			self.updateLabels()
+			self.selectedCookies.removeAll(keepCapacity: true)
+			self.sourceList.selectRowIndexes(selectedIndices, byExtendingSelection: false)
+			for index in self.sourceList.selectedRowIndexes
+			{
+				guard index >= 0 && index < (self.searchDomains?.count ?? self.store.domainCount)
+				else
+				{
+					continue
+				}
+				let domain = (self.searchDomains?[index] ?? self.store.domainAtIndex(index))
+				domain?.cookies.map { self.selectedCookies.append($0) }
+			}
+			self.tableView.reloadData()
+		})
+	}
 }
 // MARK: - Table View
 extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
@@ -193,9 +220,31 @@ extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
 	}
 	func tableViewSelectionDidChange(notification: NSNotification)
 	{
+		defer
+		{
+			for item in toolbar.items
+			{
+				if item.action == "removeCookie:"
+				{
+					dispatch_async(dispatch_get_main_queue(), {
+						item.enabled = self.highlightedCookies.count > 0
+					})
+				}
+			}
+		}
+		highlightedCookies.removeAll(keepCapacity: true)
 		guard notification.object === sourceList
 		else
 		{
+			for index in tableView.selectedRowIndexes
+			{
+				guard index >= 0 && index < selectedCookies.count
+				else
+				{
+					continue
+				}
+				highlightedCookies.append(selectedCookies[index])
+			}
 			return
 		}
 		selectedCookies.removeAll(keepCapacity: true)
@@ -241,7 +290,6 @@ extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
 				selectedCookies.sortInPlace { $0.path.localizedCaseInsensitiveCompare($1.path) == order }
 				break
 			case "expires":
-				// TODO: Date sorting.
 				selectedCookies.sortInPlace
 				{
 					guard $0.expiryDate != nil
@@ -276,6 +324,7 @@ extension MainViewController : NSTableViewDataSource, NSTableViewDelegate
 		tableView.reloadData()
 	}
 }
+// MARK: - Toolbar Actions
 extension MainViewController : NSToolbarDelegate
 {
 	@IBAction func addCookie(sender: NSToolbarItem)
@@ -298,6 +347,25 @@ extension MainViewController : NSToolbarDelegate
 			return
 		}
 		searchDomains = store.searchUsingString(str)
+	}
+	@IBAction func removeCookie(sender: NSToolbarItem)
+	{
+		highlightedCookies.removeAll(keepCapacity: true)
+		for index in tableView.selectedRowIndexes
+		{
+			guard index >= 0 && index < selectedCookies.count
+			else { continue }
+			highlightedCookies.append(selectedCookies[index])
+		}
+		do
+		{
+			try store.deleteCookies(highlightedCookies)
+		}
+		catch
+		{
+			// TODO: Show error
+		}
+		highlightedCookies.removeAll()
 	}
 }
 

@@ -33,7 +33,7 @@ import Foundation
 protocol SafariCookieStoreDelegate : class, GenericCookieStoreDelegate
 {
 	func stoppedTrackingSafariCookies()
-	func safariDomainsUpdated(domains: [(domain: String, cookies: [HTTPCookie])], eachProgress: Double)
+	func safariDomainsUpdated(domains: [(domain: String, cookies: [HTTPCookie])], eachProgress: Double, moreComing: Bool)
 }
 
 
@@ -294,16 +294,15 @@ final class SafariCookieStore: GenericCookieStore
 				cachedCookieDomains.append((domain: domain.domain, cookies: domain.cookies))
 				if cachedCookieDomains.count >= 10
 				{
-					self.delegate?.safariDomainsUpdated(cachedCookieDomains, eachProgress: pageProgress)
+					self.delegate?.safariDomainsUpdated(cachedCookieDomains, eachProgress: pageProgress, moreComing: true)
 					cachedCookieDomains.removeAll(keepCapacity: true)
 				}
 			}
-			self.delegate?.safariDomainsUpdated(cachedCookieDomains, eachProgress: pageProgress)
+			self.delegate?.safariDomainsUpdated(cachedCookieDomains, eachProgress: pageProgress, moreComing: false)
 			for domain in thisCookieDomain
 			{
 				self.delegate?.browser(.Safari, lostDomain: domain)
 			}
-			self.delegate?.finishedParsingCookies()
 		})
 	}
 	

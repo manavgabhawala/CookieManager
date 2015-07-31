@@ -644,6 +644,11 @@
                         <action selector="addCookie:" target="-2" id="LqS-lX-KPw"/>
                     </connections>
                 </toolbarItem>
+                <toolbarItem implicitItemIdentifier="91836BB8-B513-4C3A-BD53-5F19910F4439" label="" paletteLabel="Delete Cookie" tag="-1" image="NSRemoveTemplate" autovalidates="NO" id="fX0-Qn-Z2b">
+                    <connections>
+                        <action selector="removeCookie:" target="-2" id="EVK-gQ-WFz"/>
+                    </connections>
+                </toolbarItem>
                 <toolbarItem implicitItemIdentifier="96574FFE-9CD7-4419-A994-1E2A443E7418" label="" paletteLabel="Search" id="3Zw-a9-UQ8">
                     <nil key="toolTip"/>
                     <size key="minSize" width="97" height="22"/>
@@ -664,8 +669,9 @@
                 </toolbarItem>
             </allowedToolbarItems>
             <defaultToolbarItems>
-                <toolbarItem reference="V3B-LB-lVd"/>
+                <toolbarItem reference="dGL-A2-HzT"/>
                 <toolbarItem reference="34z-fo-pv8"/>
+                <toolbarItem reference="fX0-Qn-Z2b"/>
                 <toolbarItem reference="V3B-LB-lVd"/>
                 <toolbarItem reference="3Zw-a9-UQ8"/>
                 <toolbarItem reference="dGL-A2-HzT"/>
@@ -679,6 +685,7 @@
     <resources>
         <image name="NSAddTemplate" width="11" height="11"/>
         <image name="NSBonjour" width="32" height="32"/>
+        <image name="NSRemoveTemplate" width="11" height="11"/>
         <image name="Safari" width="64" height="64"/>
     </resources>
 </document>

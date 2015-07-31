@@ -19,6 +19,7 @@ protocol CookieStoreDelegate: class
 	func madeProgress(progress: Double)
 	
 	func updatedCookies()
+	func fullUpdate()
 }
 
 final class CookieStore
@@ -87,13 +88,13 @@ final class CookieStore
 		}
 		return browsers
 	}
-	func domainAtIndex(index: Int) -> HTTPCookieDomain?
+	func domainAtIndex(index: Int, useRecursion: Bool = true) -> HTTPCookieDomain?
 	{
 		guard index >= 0 && index < sortedHash.count, let domain = cookieHash[sortedHash[index]]
 		else
 		{
 			sortedHash = cookieHash.keys.sort(<)
-			return nil
+			return useRecursion ? domainAtIndex(index, useRecursion: false) : nil
 		}
 		return domain
 	}
@@ -128,6 +129,65 @@ final class CookieStore
 		}
 		return domainsToSend.sort { $0.0 < $1.0 }.map { $0.1 }
 	}
+	func deleteCookies(cookies: [HTTPCookie]) throws
+	{
+		guard cookies.count > 0
+		else
+		{
+			return
+		}
+		
+		let firefoxCookies = cookies.filter { $0.browser == .Firefox }
+		let firefoxIDs = firefoxCookies.map { $0.firefoxID! }
+		do
+		{
+			try firefoxStore?.deleteRows(firefoxIDs)
+		}
+		for cookie in firefoxCookies
+		{
+			guard let dom = cookieHash[cookie.domain]
+			else { continue }
+			if dom.removeCookie(cookie)
+			{
+				--cookieCount
+			}
+			if dom.cookies.count == 0
+			{
+				cookieHash.removeValueForKey(cookie.domain)
+			}
+		}
+		let chromeCookies = cookies.filter { $0.browser == .Chrome }
+		let chromeIDs = chromeCookies.map { $0.creationDate!.timeIntervalSince1970 }
+		do
+		{
+			try chromeStore?.deleteRows(chromeIDs)
+		}
+		for cookie in chromeCookies
+		{
+			guard let dom = cookieHash[cookie.domain]
+			else { continue }
+			if dom.removeCookie(cookie)
+			{
+				--cookieCount
+			}
+			if dom.cookies.count == 0
+			{
+				cookieHash.removeValueForKey(cookie.domain)
+			}
+		}
+		let safariCookies = cookies.filter { $0.browser == .Safari }
+		safariCookies
+		guard let domain = cookieHash[cookies.first!.domain]
+		else
+		{
+			return
+		}
+		if domain.cookies.count == 0
+		{
+			// TODO: Delete the domain also
+		}
+		delegate?.fullUpdate()
+	}
 }
 
 // MARK: - Shared
@@ -144,6 +204,7 @@ extension CookieStore : GenericCookieStoreDelegate
 	func finishedParsingCookies()
 	{
 		--currentParses
+		currentParses = max(0, currentParses)
 		myProgress -= 1.0
 		sortedHash = cookieHash.keys.sort(<)
 		if currentParses == 0
@@ -161,7 +222,7 @@ extension CookieStore : GenericCookieStoreDelegate
 		self.domainUpdated(domain, withCookies: cookies, forBrowser: browser, progressTime: nil)
 	}
 	
-	func domainUpdated(domain: String, withCookies cookies: [HTTPCookie], forBrowser browser: Browser, progressTime: Double?)
+	func domainUpdated(domain: String, withCookies cookies: [HTTPCookie], forBrowser browser: Browser, progressTime: Double?, moreComing: Bool = true)
 	{
 		dispatch_async(cookieHashQueue, {
 			defer
@@ -170,11 +231,15 @@ extension CookieStore : GenericCookieStoreDelegate
 				{
 					self.progressMade(prog)
 				}
+				if !moreComing
+				{
+					self.finishedParsingCookies()
+				}
 			}
 			if let existingDomain = self.cookieHash[domain]
 			{
 				guard (existingDomain.cookies.filter { $0.browser == browser }) != cookies
-					else
+				else
 				{
 					return
 				}
@@ -186,7 +251,7 @@ extension CookieStore : GenericCookieStoreDelegate
 			else
 			{
 				guard cookies.count > 0
-					else
+				else
 				{
 					return
 				}
@@ -194,7 +259,6 @@ extension CookieStore : GenericCookieStoreDelegate
 				self.cookieHash[domain] = HTTPCookieDomain(domain: domain, cookies: cookies, capacity: cookies.count)
 			}
 		})
-		
 	}
 	func browser(browser: Browser, lostDomain domain: String)
 	{
@@ -216,11 +280,11 @@ extension CookieStore : GenericCookieStoreDelegate
 // MARK: - Safari Store
 extension CookieStore : SafariCookieStoreDelegate
 {
-	func safariDomainsUpdated(domains: [(domain: String, cookies: [HTTPCookie])], eachProgress: Double)
+	func safariDomainsUpdated(domains: [(domain: String, cookies: [HTTPCookie])], eachProgress: Double, moreComing: Bool)
 	{
 		for domain in domains
 		{
-			self.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Safari, progressTime: eachProgress)
+			self.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Safari, progressTime: eachProgress, moreComing: moreComing)
 		}
 	}
 	func stoppedTrackingSafariCookies()

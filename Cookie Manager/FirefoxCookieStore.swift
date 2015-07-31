@@ -14,6 +14,8 @@ protocol FirefoxCookieStoreDelegate : class, GenericCookieStoreDelegate
 	func stoppedTrackingFirefoxCookies()
 }
 
+private let tableName = "moz_cookies"
+
 /// This class is responsible for parsing, accessing and writing cookies for `Firefox`
 final class FirefoxCookieStore: GenericCookieStore
 {
@@ -68,11 +70,15 @@ final class FirefoxCookieStore: GenericCookieStore
 			return nil
 		}
 	}
+	deinit
+	{
+		db.close()
+	}
 	override func updateCookies(fd: Int32? = nil) throws
 	{
 		delegate?.startedParsingCookies()
 		defer { delegate?.finishedParsingCookies() }
-		guard let count = db.intForQuery("SELECT COUNT(*) FROM moz_cookies"), let cookies = db.executeQuery("SELECT * FROM moz_cookies ORDER BY host")
+		guard let count = db.intForQuery("SELECT COUNT(*) FROM \(tableName)"), let cookies = db.executeQuery("SELECT * FROM \(tableName) ORDER BY host")
 		else
 		{
 			throw CookieError.FileParsingError
@@ -93,7 +99,7 @@ final class FirefoxCookieStore: GenericCookieStore
 			{
 				continue
 			}
-			
+			let id = Int(cookies.intForColumn("id"))
 			let name = cookies.stringForColumn("name")
 			let value = cookies.stringForColumn("value")
 			let path = cookies.stringForColumn("path")
@@ -104,12 +110,13 @@ final class FirefoxCookieStore: GenericCookieStore
 			let HTTPOnly = cookies.boolForColumn("isHttpOnly")
 			
 			
-			let cookie = HTTPCookie(URL: URL, name: name ?? "", value: value ?? "", path: path ?? "", expiryDate: expiryDate, creationDate: creationDate, secure: secure, HTTPOnly: HTTPOnly, version: 0, browser: .Firefox, comment: nil)
+			var cookie = HTTPCookie(URL: URL, name: name ?? "", value: value ?? "", path: path ?? "", expiryDate: expiryDate, creationDate: creationDate, secure: secure, HTTPOnly: HTTPOnly, version: 0, browser: .Firefox, comment: nil)
+			cookie.firefoxID = id
 			if URL != domain?.domain
 			{
 				if let domain = domain
 				{
-					delegate?.domainUpdated(URL, withCookies: domain.cookies, forBrowser: .Firefox)
+					delegate?.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Firefox)
 				}
 				cookieDomains.append(URL)
 				domain = HTTPCookieDomain(domain: URL, cookies: [cookie], capacity: 1)
@@ -129,5 +136,22 @@ final class FirefoxCookieStore: GenericCookieStore
 	override func stoppedTrackingCookies()
 	{
 		delegate?.stoppedTrackingFirefoxCookies()
+	}
+	func deleteRows(ids: [Int]) throws
+	{
+		guard ids.count > 0
+		else
+		{
+			return
+		}
+		var idsString = ids.reduce("", combine: { "\($0), \($1)"})
+		idsString.removeRange(Range<String.Index>(start: idsString.startIndex, end: advance(idsString.startIndex, 2)))
+		db.beginTransaction()
+		guard db.executeStatements("DELETE FROM \(tableName) WHERE id IN (\(idsString))")
+		else
+		{
+			throw CookieError.OperationFailedError
+		}
+		db.commit()
 	}
 }

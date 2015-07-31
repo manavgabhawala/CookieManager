@@ -88,7 +88,21 @@ class HTTPCookieDomain
 		cookies = cookies.filter { $0.browser != browser }
 		return startCount - cookies.count
 	}
-	
+	///  Removes a specific cookie
+	///
+	///  - parameter cookie: The cookie to remove.
+	///
+	///  - returns: `true` if a value was removed `false` otherwise.
+	func removeCookie(cookie: HTTPCookie) -> Bool
+	{
+		guard let index = cookies.indexOf(cookie)
+		else
+		{
+			return false
+		}
+		cookies.removeAtIndex(index)
+		return true
+	}
 }
 extension HTTPCookieDomain: Equatable {}
 func ==(lhs: HTTPCookieDomain, rhs: HTTPCookieDomain) -> Bool

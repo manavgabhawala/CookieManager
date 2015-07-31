@@ -39,6 +39,8 @@ enum CookieError : ErrorType
 	case FilePermissionError
 	/// A FileParsing error indicates that there was an issue with reading the cookie file.
 	case FileParsingError
+	/// The operation failed.
+	case OperationFailedError
 }
 
 private let safariImage = NSImage(named: "Safari")!

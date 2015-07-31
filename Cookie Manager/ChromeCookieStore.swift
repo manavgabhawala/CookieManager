@@ -34,6 +34,7 @@ protocol ChromeCookieStoreDelegate : class, GenericCookieStoreDelegate
 {
 	func stoppedTrackingChromeCookies()
 }
+private let tableName = "cookies"
 /// This class is responsible for parsing, accessing and writing cookies for `Chrome`
 final class ChromeCookieStore : GenericCookieStore
 {
@@ -82,12 +83,15 @@ final class ChromeCookieStore : GenericCookieStore
 			return nil
 		}
 	}
-	
+	deinit
+	{
+		db.close()
+	}
 	override func updateCookies(fd: Int32? = nil) throws
 	{
 		delegate?.startedParsingCookies()
 		defer { delegate?.finishedParsingCookies() }
-		guard let count = db.intForQuery("SELECT COUNT(*) FROM cookies"), let cookies = db.executeQuery("SELECT * FROM cookies ORDER BY host_key")
+		guard let count = db.intForQuery("SELECT COUNT(*) FROM \(tableName)"), let cookies = db.executeQuery("SELECT * FROM \(tableName) ORDER BY host_key")
 		else
 		{
 			throw CookieError.FileParsingError
@@ -108,7 +112,6 @@ final class ChromeCookieStore : GenericCookieStore
 			{
 				continue
 			}
-			
 			let name = cookies.stringForColumn("name")
 			let value = cookies.stringForColumn("value")
 			let path = cookies.stringForColumn("path")
@@ -118,13 +121,12 @@ final class ChromeCookieStore : GenericCookieStore
 			let secure = cookies.boolForColumn("secure")
 			let HTTPOnly = cookies.boolForColumn("httponly")
 			
-			
 			let cookie = HTTPCookie(URL: URL, name: name ?? "", value: value ?? "", path: path ?? "", expiryDate: expiryDate, creationDate: creationDate, secure: secure, HTTPOnly: HTTPOnly, version: 0, browser: .Chrome, comment: nil)
 			if URL != domain?.domain
 			{
 				if let domain = domain
 				{
-					delegate?.domainUpdated(URL, withCookies: domain.cookies, forBrowser: .Chrome)
+					delegate?.domainUpdated(domain.domain, withCookies: domain.cookies, forBrowser: .Chrome)
 				}
 				cookieDomains.append(URL)
 				domain = HTTPCookieDomain(domain: URL, cookies: [cookie], capacity: 1)
@@ -144,5 +146,22 @@ final class ChromeCookieStore : GenericCookieStore
 	override func stoppedTrackingCookies()
 	{
 		delegate?.stoppedTrackingChromeCookies()
+	}
+	func deleteRows(ids: [Double]) throws
+	{
+		guard ids.count > 0
+		else
+		{
+			return
+		}
+		var idsString = ids.reduce("", combine: { "\($0), \(Int($1))"})
+		idsString.removeRange(Range<String.Index>(start: idsString.startIndex, end: advance(idsString.startIndex, 2)))
+		db.beginTransaction()
+		guard db.executeStatements("DELETE FROM \(tableName) WHERE creation_utc IN (\(idsString))")
+		else
+		{
+			throw CookieError.OperationFailedError
+		}
+		db.commit()
 	}
 }
