@@ -88,6 +88,7 @@ class HTTPCookieDomain
 		cookies = cookies.filter { $0.browser != browser }
 		return startCount - cookies.count
 	}
+	
 	///  Removes a specific cookie
 	///
 	///  - parameter cookie: The cookie to remove.

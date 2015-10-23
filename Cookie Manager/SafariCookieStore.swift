@@ -138,11 +138,12 @@ final class SafariCookieStore: GenericCookieStore
 		}
 		
 		// Get the actual page data using the sizes.
-		var pages = [NSData]()
+		var pages = [(NSData, pageSizeOffset: Int, pageDataOffset: Int)]()
 		pages.reserveCapacity(numberOfPages)
-		for size in pageSizes
+		for (i, size) in pageSizes.enumerate()
 		{
-			pages.append(file.readDataOfLength(size))
+			let dataOffset = Int(file.offsetInFile)
+			pages.append((file.readDataOfLength(size), pageSizeOffset: 4 + 4 + i * 4, pageDataOffset: dataOffset))
 		}
 		startedBackgroundParsing = true
 		let pageProgress = 1.0 / Double(numberOfPages)
@@ -151,9 +152,8 @@ final class SafariCookieStore: GenericCookieStore
 			self.cookieDomains.removeAll(keepCapacity: true)
 			var cachedCookieDomains = [(domain: String, cookies: [HTTPCookie])]()
 			cachedCookieDomains.reserveCapacity(10)
-			for page in pages
+			for (page, sizeOffset, dataOffset) in pages
 			{
-//				self.delegate?.progressMade(pageProgress)
 				var location = 0
 				let pageHeaderRange = NSRange(location: location, length: 4) // Page header is always the first 4 bytes.
 				location += pageHeaderRange.length
@@ -278,6 +278,7 @@ final class SafariCookieStore: GenericCookieStore
 					if currentDomain == nil
 					{
 						currentDomain = HTTPCookieDomain(domain: URL, cookies: [cookie], capacity: numberOfCookies)
+						
 					}
 					else
 					{
@@ -367,5 +368,26 @@ final class SafariCookieStore: GenericCookieStore
 	override func stoppedTrackingCookies()
 	{
 		delegate?.stoppedTrackingSafariCookies()
+	}
+	
+	///  Removes a cookie from the domain from the binary file from safari.
+	///
+	///  - parameter cookie: The cookie to remove.
+	///  - parameter domain: The domain from which to remove the cookie.
+	func removeCookie(cookie: HTTPCookie, fromDomain domain: HTTPCookieDomain) throws
+	{
+		precondition(cookie.browser == .Safari)
+		if #available(OSX 10.11, *)
+		{
+			cookieJar.deleteCookie(cookie.cookie)
+		}
+		let fd = try self.createFileDescriptor()
+		let fileHandle = NSFileHandle(fileDescriptor: fd)
+		fileHandle.seekToFileOffset(<#T##offset: UInt64##UInt64#>)
+		
+		if domain.cookies.count == 1 && domain.cookies.first! == cookie
+		{
+			// TODO: Reduce the number of pages and remove its size and all its data.
+		}
 	}
 }
